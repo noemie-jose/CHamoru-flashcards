@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chamoru — Flashcards</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --cream:#f5f0e8;--ink:#1a1208;--rust:#c4531a;--gold:#d4a832;
+  --sage:#5a7a5e;--card-bg:#fefcf7;--shadow:rgba(26,18,8,0.12);--blue:#3a6fa8;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  padding:24px 16px 48px;
+  background-image:radial-gradient(ellipse at 20% 10%,rgba(196,83,26,.06) 0%,transparent 50%),
+                   radial-gradient(ellipse at 80% 90%,rgba(90,122,94,.06) 0%,transparent 50%);}
+header{text-align:center;margin-bottom:24px;animation:fadeDown .6s ease both}
+header h1{font-family:'Playfair Display',serif;font-size:clamp(2rem,5vw,3rem);font-weight:700;letter-spacing:-.02em;line-height:1}
+header h1 span{color:var(--rust);font-style:italic}
+header p{margin-top:6px;font-size:.85rem;font-weight:300;color:#6b5d4a;letter-spacing:.08em;text-transform:uppercase}
+
+/* ── USER PICKER ── */
+#userPicker{display:flex;flex-direction:column;align-items:center;gap:20px;width:100%;max-width:440px;animation:fadeUp .5s ease both .1s}
+.picker-title{font-family:'Playfair Display',serif;font-size:1.1rem;color:#4a3c2a;text-align:center}
+.user-cards{display:flex;flex-direction:column;gap:12px;width:100%}
+.user-card{
+  background:var(--card-bg);border:2px solid rgba(26,18,8,.1);border-radius:18px;
+  padding:18px 20px;cursor:pointer;display:flex;align-items:center;gap:16px;
+  transition:all .2s;box-shadow:0 2px 12px var(--shadow)
+}
+.user-card:hover{border-color:var(--rust);transform:translateY(-2px);box-shadow:0 6px 20px var(--shadow)}
+.user-avatar{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0}
+.user-info{flex:1}
+.user-name{font-weight:600;font-size:1rem;color:var(--ink)}
+.user-stats{font-size:.72rem;color:#8a7560;margin-top:3px}
+.user-badge{font-size:.65rem;font-weight:500;padding:3px 9px;border-radius:12px;margin-left:auto}
+
+/* ── SETUP ── */
+#setup{display:none;flex-direction:column;align-items:center;gap:14px;width:100%;max-width:520px}
+.setup-card{background:var(--card-bg);border:1px solid rgba(26,18,8,.1);border-radius:20px;padding:22px;width:100%;box-shadow:0 4px 24px var(--shadow)}
+.setup-card h2{font-family:'Playfair Display',serif;font-size:1rem;margin-bottom:12px;color:#4a3c2a}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mode-btn{background:var(--cream);border:2px solid rgba(26,18,8,.12);border-radius:14px;padding:14px 10px;cursor:pointer;text-align:center;transition:all .2s;font-family:'DM Sans',sans-serif}
+.mode-btn:hover{border-color:var(--rust);transform:translateY(-1px)}
+.mode-btn.selected{border-color:var(--rust);background:rgba(196,83,26,.06)}
+.mode-btn .flag{font-size:1.6rem;margin-bottom:3px}
+.mode-btn .label{font-size:.76rem;font-weight:500;color:#4a3c2a;text-transform:uppercase;letter-spacing:.05em}
+.mode-btn .sublabel{font-size:.68rem;color:#8a7560;margin-top:2px}
+.cat-grid{display:flex;flex-wrap:wrap;gap:7px}
+.cat-chip{padding:5px 11px;border-radius:20px;border:1.5px solid rgba(26,18,8,.15);background:var(--cream);font-size:.71rem;font-weight:500;cursor:pointer;transition:all .15s;letter-spacing:.03em;font-family:'DM Sans',sans-serif;color:#4a3c2a}
+.cat-chip:hover{border-color:var(--rust)}
+.cat-chip.selected{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+.cat-chip.phrases{border-color:var(--blue);color:var(--blue)}
+.cat-chip.phrases.selected{background:var(--blue);color:white;border-color:var(--blue)}
+.back-link{font-size:.78rem;color:#8a7560;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.back-link:hover{color:var(--rust)}
+.start-btn{width:100%;padding:14px;background:var(--ink);color:var(--cream);border:none;border-radius:14px;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:500;cursor:pointer;letter-spacing:.03em;transition:all .2s;position:relative;overflow:hidden}
+.start-btn:hover{background:var(--rust);transform:translateY(-1px);box-shadow:0 6px 20px rgba(196,83,26,.3)}
+.start-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.loading-bar{position:absolute;bottom:0;left:0;height:3px;background:var(--gold);width:0%;transition:width .3s ease}
+
+/* ── STUDY ── */
+#study{display:none;width:100%;max-width:580px}
+.study-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.study-user{display:flex;align-items:center;gap:8px;font-size:.8rem;font-weight:500;color:#4a3c2a}
+.study-user .av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem}
+.switch-link{font-size:.72rem;color:#8a7560;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.switch-link:hover{color:var(--rust)}
+
+.score-dashboard{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.score-box{background:var(--card-bg);border:1px solid rgba(26,18,8,.1);border-radius:14px;padding:11px 6px;text-align:center;box-shadow:0 2px 8px var(--shadow)}
+.score-box .val{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;line-height:1}
+.score-box .lbl{font-size:.6rem;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:#8a7560;margin-top:3px}
+.score-box.mastered .val{color:var(--sage)}
+.score-box.kept .val{color:var(--gold)}
+.score-box.wrong .val{color:var(--rust)}
+.score-box.streak .val{color:var(--blue)}
+
+.stats-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:.76rem;font-weight:500;color:#6b5d4a;letter-spacing:.04em;text-transform:uppercase}
+.cat-badge{background:rgba(26,18,8,.07);padding:3px 9px;border-radius:20px;font-size:.66rem}
+.progress-track{height:4px;background:rgba(26,18,8,.1);border-radius:2px;margin-bottom:18px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--rust),var(--gold));border-radius:2px;transition:width .4s ease}
+.key-hints{display:flex;gap:12px;justify-content:center;margin-bottom:12px;flex-wrap:wrap}
+.key-hint{font-size:.63rem;color:#a08060;display:flex;align-items:center;gap:4px}
+.key{background:var(--card-bg);border:1px solid rgba(26,18,8,.2);border-radius:4px;padding:2px 5px;font-size:.63rem;font-family:monospace;color:var(--ink);box-shadow:0 1px 0 rgba(26,18,8,.2)}
+
+/* ── CARD ── */
+.card-scene{perspective:1200px;margin-bottom:16px}
+.card-inner{position:relative;width:100%;padding-bottom:52%;transform-style:preserve-3d;transition:transform .55s cubic-bezier(.23,1,.32,1);cursor:pointer}
+.card-inner.flipped{transform:rotateY(180deg)}
+.card-face{position:absolute;inset:0;background:var(--card-bg);border-radius:24px;border:1px solid rgba(26,18,8,.1);box-shadow:0 8px 40px var(--shadow),0 2px 8px rgba(26,18,8,.06);backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:26px 30px;gap:7px}
+.card-face.back{transform:rotateY(180deg)}
+.card-face.phrase-card{border-top:3px solid var(--blue)}
+.card-lang-tag{position:absolute;top:15px;left:17px;font-size:.6rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:#a08060;background:var(--cream);padding:3px 8px;border-radius:20px;border:1px solid rgba(26,18,8,.08)}
+.card-type-tag{position:absolute;top:15px;left:50%;transform:translateX(-50%);font-size:.58rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);background:rgba(58,111,168,.08);padding:3px 8px;border-radius:20px;border:1px solid rgba(58,111,168,.2)}
+.audio-btn{position:absolute;top:11px;right:13px;background:none;border:1px solid rgba(26,18,8,.12);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;color:var(--ink);font-size:12px}
+.audio-btn:hover{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+.card-word{font-family:'Playfair Display',serif;font-size:clamp(1.3rem,4vw,2.3rem);font-weight:700;text-align:center;line-height:1.15;letter-spacing:-.01em}
+.card-pos{font-size:.73rem;color:#a08060;font-style:italic}
+.card-literal{font-size:.73rem;color:#8a7060;font-style:italic;text-align:center;line-height:1.45;max-width:88%}
+.card-literal strong{color:#6b5d4a;font-style:normal}
+.card-tap-hint{position:absolute;bottom:12px;font-size:.63rem;color:#c0a882;letter-spacing:.06em;text-transform:uppercase}
+.card-face.back .card-word{color:var(--rust)}
+
+/* ── ACTIONS ── */
+.actions{display:none;flex-direction:column;gap:7px;animation:fadeUp .3s ease both}
+.actions.visible{display:flex}
+.action-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+.action-btn{padding:12px 7px;border-radius:13px;border:none;font-family:'DM Sans',sans-serif;font-size:.73rem;font-weight:500;cursor:pointer;text-align:center;transition:all .2s;letter-spacing:.02em;line-height:1.3}
+.btn-mastered{background:var(--sage);color:white}
+.btn-mastered:hover{background:#4a6a4e;transform:translateY(-2px);box-shadow:0 6px 16px rgba(90,122,94,.3)}
+.btn-keep{background:var(--gold);color:var(--ink)}
+.btn-keep:hover{background:#c49820;transform:translateY(-2px);box-shadow:0 6px 16px rgba(212,168,50,.3)}
+.btn-wrong{background:rgba(196,83,26,.1);color:var(--rust);border:1px solid rgba(196,83,26,.2)}
+.btn-wrong:hover{background:var(--rust);color:white;transform:translateY(-2px);box-shadow:0 6px 16px rgba(196,83,26,.3)}
+.action-icon{font-size:.95rem;display:block;margin-bottom:2px}
+.key-label{font-size:.58rem;opacity:.55;margin-top:2px}
+
+/* ── COMPLETE ── */
+#complete{display:none;text-align:center;padding:36px 22px;background:var(--card-bg);border-radius:24px;border:1px solid rgba(26,18,8,.1);box-shadow:0 8px 40px var(--shadow);max-width:440px;width:100%;animation:fadeUp .5s ease both}
+#complete .trophy{font-size:2.8rem;margin-bottom:12px}
+#complete h2{font-family:'Playfair Display',serif;font-size:1.6rem;margin-bottom:6px}
+#complete p{color:#6b5d4a;font-size:.86rem;margin-bottom:18px;line-height:1.6}
+.final-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:20px}
+.final-stat{background:var(--cream);border-radius:12px;padding:11px 6px}
+.final-stat .v{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700}
+.final-stat .l{font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;color:#8a7560;margin-top:2px}
+.final-stat.m .v{color:var(--sage)}.final-stat.w .v{color:var(--rust)}.final-stat.k .v{color:var(--gold)}
+.complete-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.complete-btn{padding:11px 22px;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:500;cursor:pointer;transition:all .2s;border:none}
+.complete-btn.primary{background:var(--ink);color:var(--cream)}
+.complete-btn.primary:hover{background:var(--rust)}
+.complete-btn.secondary{background:var(--cream);color:var(--ink);border:1.5px solid rgba(26,18,8,.2)}
+.complete-btn.secondary:hover{border-color:var(--rust);color:var(--rust)}
+
+
+@keyframes fadeDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.shake{animation:shake .4s ease}
+
+/* ── BACK / SKIP / SESSION LOG ── */
+.nav-row{display:flex;gap:7px;margin-bottom:7px}
+.nav-btn{flex:1;padding:10px 7px;border-radius:12px;border:1.5px solid rgba(26,18,8,.15);background:var(--card-bg);font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:500;cursor:pointer;transition:all .2s;color:#4a3c2a;text-align:center}
+.nav-btn:hover{border-color:var(--rust);color:var(--rust);transform:translateY(-1px)}
+.nav-btn:disabled{opacity:.3;cursor:not-allowed;transform:none}
+.log-toggle{width:100%;padding:10px 14px;border-radius:12px;border:1.5px solid rgba(26,18,8,.12);background:var(--card-bg);font-family:'DM Sans',sans-serif;font-size:.75rem;font-weight:500;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;color:#4a3c2a;margin-top:8px;transition:all .2s}
+.log-toggle:hover{border-color:var(--rust)}
+.log-panel{display:none;margin-top:8px;border:1px solid rgba(26,18,8,.1);border-radius:14px;overflow:hidden;background:var(--card-bg);max-height:320px;overflow-y:auto}
+.log-panel.open{display:block}
+.log-header{display:grid;grid-template-columns:1fr 1fr 1fr auto;padding:8px 12px;font-size:.62rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#8a7560;background:var(--cream);border-bottom:1px solid rgba(26,18,8,.08)}
+.log-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;padding:7px 12px;font-size:.78rem;border-bottom:1px solid rgba(26,18,8,.04);align-items:center}
+.log-row:last-child{border-bottom:none}
+.log-row.correct{background:rgba(90,122,94,.04)}
+.log-row.wrong{background:rgba(196,83,26,.04)}
+.log-badge{font-size:.6rem;font-weight:600;padding:2px 7px;border-radius:10px;white-space:nowrap}
+.log-badge.c{background:rgba(90,122,94,.15);color:var(--sage)}
+.log-badge.w{background:rgba(196,83,26,.12);color:var(--rust)}
+.log-badge.s{background:rgba(26,18,8,.07);color:#6b5d4a}
+
+/* ── SAVE / IMPORT ── */
+.save-row{display:flex;gap:10px;width:100%;max-width:440px}
+.save-btn{flex:1;padding:11px;border-radius:12px;border:1.5px solid rgba(26,18,8,.18);background:var(--card-bg);font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:500;color:#4a3c2a;cursor:pointer;transition:all .2s;text-align:center}
+.save-btn:hover{border-color:var(--rust);color:var(--rust);transform:translateY(-1px)}
+.import-btn{cursor:pointer}
+.import-msg{font-size:.78rem;padding:8px 14px;border-radius:10px;text-align:center;max-width:440px;width:100%}
+.import-msg.ok{background:rgba(90,122,94,.12);color:var(--sage);border:1px solid rgba(90,122,94,.25)}
+.import-msg.err{background:rgba(196,83,26,.1);color:var(--rust);border:1px solid rgba(196,83,26,.2)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Cha<span style='color:var(--blue);font-style:italic'>moru</span></h1>
+  <p>Chamorro Language Flashcards</p>
+</header>
+
+<!-- USER PICKER -->
+<div id="userPicker">
+  <p class="picker-title">Who's studying today?</p>
+  <div class="user-cards" id="userCards"></div>
+  <div class="save-row">
+    <button class="save-btn" onclick="openWordList()">📖 Browse All</button>
+    <button class="save-btn" onclick="openCardCreator()">✚ Custom Cards</button>
+  </div>
+  <div class="save-row">
+    <button class="save-btn" onclick="exportProgress()">⬇ Save Progress</button>
+    <label class="save-btn import-btn">⬆ Load Progress<input type="file" accept=".json" onchange="importProgress(event)" style="display:none"></label>
+  </div>
+  <div id="importMsg" class="import-msg" style="display:none"></div>
+</div>
+
+<!-- SETUP -->
+<div id="setup">
+  <div class="setup-card">
+    <h2>Direction</h2>
+    <div class="mode-grid">
+      <button class="mode-btn selected" id="btn-fr" onclick="selectMode('fr')">
+        <div class="flag">🌺</div>
+        <div class="label">Chamoru</div>
+        <div class="sublabel">→ guess English</div>
+      </button>
+      <button class="mode-btn" id="btn-en" onclick="selectMode('en')">
+        <div class="flag">🇺🇸</div>
+        <div class="label">English</div>
+        <div class="sublabel">→ guess French</div>
+      </button>
+    </div>
+  </div>
+  <div class="setup-card">
+    <h2>Categories <span style="font-weight:300;font-size:.8rem;color:#8a7560">(all selected by default)</span></h2>
+    <div class="cat-grid" id="catGrid"></div>
+  </div>
+  <button class="start-btn" id="startBtn" onclick="startStudy()">
+    Start Studying
+  </button>
+  <button id="resetMasteredBtn" onclick="resetMasteredCards()"
+    style="width:100%;padding:11px;border-radius:12px;border:1.5px solid rgba(196,83,26,.25);background:transparent;font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:500;color:var(--rust);cursor:pointer;transition:all .2s"
+    onmouseover="this.style.background='rgba(196,83,26,.07)'" onmouseout="this.style.background='transparent'">
+    🔄 Reset Mastered Cards
+  </button>
+  <span class="back-link" onclick="goToUserPicker()">← Switch user</span>
+</div>
+
+<!-- STUDY -->
+<div id="study">
+  <div class="study-header">
+    <div class="study-user">
+      <div class="av" id="studyAvatar"></div>
+      <span id="studyUserName"></span>
+    </div>
+    <div style="display:flex;gap:12px">
+      <span class="switch-link" onclick="goToSetup()">Change categories</span>
+      <span class="switch-link" onclick="goToUserPicker()">Switch user</span>
+    </div>
+  </div>
+
+  <div class="score-dashboard">
+    <div class="score-box mastered"><div class="val" id="scMastered">0</div><div class="lbl">Mastered</div></div>
+    <div class="score-box kept"><div class="val" id="scKept">0</div><div class="lbl">Kept In</div></div>
+    <div class="score-box streak"><div class="val" id="scStreak">0</div><div class="lbl">Streak 🔥</div></div>
+    <div class="score-box streak" style="--blue:#d4a832"><div class="val" id="scMaxStreak" style="color:var(--gold)">0</div><div class="lbl">Best Streak</div></div>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">
+    <span style="font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#6b5d4a">Category Progress</span>
+    <span style="font-size:.65rem;color:#8a7560"><span id="masteredCount">0</span> / <span id="selectionTotal">0</span> mastered · <span id="remainingCount">0</span> remaining</span>
+  </div>
+  <div class="progress-track" style="margin-bottom:12px"><div class="progress-fill" id="progressFill"></div></div>
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">
+    <span style="font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#6b5d4a">Global Progress</span>
+    <span style="font-size:.65rem;color:#8a7560"><span id="globalMasteredLabel">0</span> / <span id="globalTotalLabel">0</span> mastered · <span id="globalRemainingLabel">0</span> remaining</span>
+  </div>
+  <div class="progress-track" style="margin-bottom:6px"><div class="progress-fill" id="globalProgressFill" style="background:linear-gradient(90deg,var(--sage),var(--gold))"></div></div>
+  <div style="margin-bottom:6px;margin-top:2px">
+    <span class="cat-badge" id="activeCatBadge" style="font-size:.68rem;padding:4px 11px"></span>
+  </div>
+
+  <div style="display:flex;justify-content:flex-end;margin-bottom:4px">
+    <button onclick="skipCard()" style="padding:5px 14px;border-radius:20px;border:1.5px solid rgba(26,18,8,.15);background:var(--card-bg);font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:500;color:#6b5d4a;cursor:pointer;transition:all .2s;letter-spacing:.03em" onmouseover="this.style.borderColor='var(--rust)';this.style.color='var(--rust)'" onmouseout="this.style.borderColor='rgba(26,18,8,.15)';this.style.color='#6b5d4a'">Skip → <span style="opacity:.5;font-size:.65rem">S</span></button>
+  </div>
+  <div class="card-scene">
+    <div class="card-inner" id="cardInner" onclick="flipCard()">
+      <div class="card-face front" id="frontFace">
+        <span class="card-lang-tag" id="frontLang">Chamoru</span>
+        <span class="card-type-tag" id="frontTypeTag" style="display:none">Phrase</span>
+        <button class="audio-btn" id="frontAudio" onclick="speakFront(event)" title="Pronounce (P)">🔊</button>
+        <div class="card-word" id="frontWord">—</div>
+        <div class="card-pos" id="frontPos"></div>
+        <span class="card-tap-hint">tap or Space to reveal</span>
+      </div>
+      <div class="card-face back" id="backFace">
+        <span class="card-lang-tag" id="backLang">English</span>
+        <span class="card-type-tag" id="backTypeTag" style="display:none">Phrase</span>
+        <button class="audio-btn" id="backAudio" onclick="speakBack(event)" title="Pronounce (P)">🔊</button>
+        <div class="card-word" id="backWord">—</div>
+        <div class="card-literal" id="backLiteral" style="display:none"></div>
+        <span class="card-tap-hint">how did you do?</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions" id="actions">
+    <div class="action-row">
+      <button class="action-btn btn-mastered" onclick="handleAnswer('mastered')">
+        <span class="action-icon">✓</span>Got it — remove<div class="key-label">press 1</div>
+      </button>
+      <button class="action-btn btn-keep" onclick="handleAnswer('keep')">
+        <span class="action-icon">↻</span>Got it — keep in<div class="key-label">press 2</div>
+      </button>
+      <button class="action-btn btn-wrong" onclick="handleAnswer('wrong')">
+        <span class="action-icon">✗</span>Missed — keep in<div class="key-label">press 3</div>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Session log toggle -->
+  <button class="log-toggle" onclick="toggleSessionLog()">
+    <span>📋 Session Log <span id="logCount" style="font-weight:400;color:#8a7560">(0 answered)</span></span>
+    <span id="logArrow" style="font-size:.8rem">▼</span>
+  </button>
+  <div class="log-panel" id="logPanel">
+    <div class="log-header" style="grid-template-columns:1fr 1fr 1fr auto"><div>French</div><div>English</div><div>Literal</div><div>Result</div></div>
+    <div id="logRows"></div>
+  </div>
+  <div class="key-hints" style="margin-top:10px;margin-bottom:0">
+    <span class="key-hint"><span class="key">Space</span> flip</span>
+    <span class="key-hint"><span class="key">1</span> mastered</span>
+    <span class="key-hint"><span class="key">2</span> keep in</span>
+    <span class="key-hint"><span class="key">3</span> missed</span>
+    <span class="key-hint"><span class="key">P</span> pronounce</span>
+    <span class="key-hint"><span class="key">S</span> skip</span>
+    <span class="key-hint"><span class="key">Q</span> quit</span>
+  </div>
+</div>
+
+<!-- WORD LIST PAGE -->
+<div id="wordList" style="display:none;width:100%;max-width:700px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+    <h2 style="font-family:'Playfair Display',serif;font-size:1.4rem">All Chamoru Cards</h2>
+    <span class="switch-link" onclick="closeWordList()">← Back</span>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap" id="wlCatFilter"></div>
+  <input id="wlSearch" type="text" placeholder="Search French or English…"
+    style="width:100%;padding:10px 14px;border:1.5px solid rgba(26,18,8,.15);border-radius:12px;font-family:'DM Sans',sans-serif;font-size:.85rem;background:var(--card-bg);color:var(--ink);margin-bottom:14px;outline:none"
+    oninput="renderWordList()">
+  <div id="wlTable"></div>
+</div>
+
+<!-- CUSTOM CARD CREATOR -->
+<div id="cardCreator" style="display:none;width:100%;max-width:500px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+    <h2 style="font-family:'Playfair Display',serif;font-size:1.4rem">Add Custom Chamoru Card</h2>
+    <span class="switch-link" onclick="closeCardCreator()">← Back</span>
+  </div>
+  <div style="background:var(--card-bg);border:1px solid rgba(26,18,8,.1);border-radius:20px;padding:24px;box-shadow:0 4px 24px var(--shadow);display:flex;flex-direction:column;gap:14px">
+    <div>
+      <label style="font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:#6b5d4a;display:block;margin-bottom:6px">Type</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button class="mode-btn selected" id="ccTypeWord" onclick="setCCType('word')">
+          <div style="font-size:1.2rem">📝</div>
+          <div class="label">Word</div>
+        </button>
+        <button class="mode-btn" id="ccTypePhrase" onclick="setCCType('phrase')">
+          <div style="font-size:1.2rem">💬</div>
+          <div class="label">Phrase</div>
+        </button>
+      </div>
+    </div>
+    <div>
+      <label style="font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:#6b5d4a;display:block;margin-bottom:6px">French</label>
+      <input id="ccFr" type="text" placeholder="e.g. Åhu"
+        style="width:100%;padding:10px 14px;border:1.5px solid rgba(26,18,8,.15);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);outline:none">
+    </div>
+    <div>
+      <label style="font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:#6b5d4a;display:block;margin-bottom:6px">English (common meaning)</label>
+      <input id="ccEn" type="text" placeholder="e.g. dog"
+        style="width:100%;padding:10px 14px;border:1.5px solid rgba(26,18,8,.15);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);outline:none">
+    </div>
+    <div id="ccLiteralRow" style="display:none">
+      <label style="font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:#6b5d4a;display:block;margin-bottom:6px">Literal English (word-for-word)</label>
+      <input id="ccLiteral" type="text" placeholder="e.g. the dog"
+        style="width:100%;padding:10px 14px;border:1.5px solid rgba(26,18,8,.15);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.9rem;background:var(--cream);color:var(--ink);outline:none">
+    </div>
+    <div id="ccMsg" style="display:none;font-size:.78rem;padding:8px 12px;border-radius:8px"></div>
+    <button onclick="saveCustomCard()"
+      style="padding:13px;background:var(--ink);color:var(--cream);border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:500;cursor:pointer;transition:all .2s"
+      onmouseover="this.style.background='var(--rust)'" onmouseout="this.style.background='var(--ink)'">
+      Add Card
+    </button>
+    <div id="customCardsList" style="margin-top:4px"></div>
+  </div>
+</div>
+
+<!-- COMPLETE -->
+<div id="complete">
+  <div class="trophy">🎉</div>
+  <h2>Deck Complete!</h2>
+  <p id="completeMsg"></p>
+  <div class="final-stats">
+    <div class="final-stat m"><div class="v" id="fMastered">0</div><div class="l">Mastered</div></div>
+    <div class="final-stat k"><div class="v" id="fKept">0</div><div class="l">Kept In</div></div>
+    <div class="final-stat w"><div class="v" id="fWrong">0</div><div class="l">Missed</div></div>
+  </div>
+  <div class="complete-btns">
+    <button class="complete-btn primary" onclick="playAgain()">Play Again</button>
+    <button class="complete-btn secondary" onclick="goToUserPicker()">Switch User</button>
+  </div>
+</div>
+
+
+
+<script>
+// ═══════════════════════════════════════
+// USERS
+// ═══════════════════════════════════════
+const USERS = [
+  { id: 'jose',   name: 'Jose',   emoji: '🦅', color: '#a8d4e8', solidBg: true },
+  { id: 'friend1', name: 'Friend 1', emoji: '🌟', color: '#3a6fa8' },
+  { id: 'friend2', name: 'Friend 2', emoji: '🌿', color: '#5a7a5e' },
+];
+
+// In-memory user state (persists during session)
+// ── Persist user stats to localStorage ──
+const LS_KEY = 'chamoru_flashcards_v1';
+
+function loadUserState() {
+  try {
+    const saved = localStorage.getItem(LS_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return null;
+}
+
+function saveUserState() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(userState)); } catch(e) {}
+}
+
+const userState = {};
+const _saved = loadUserState();
+USERS.forEach(u => {
+  userState[u.id] = (_saved && _saved[u.id]) ? _saved[u.id] : {
+    totalMastered: 0,
+    totalSessions: 0,
+    bestStreak: 0,
+    lastPlayed: null,
+    masteredKeys: [],
+  };
+  // Ensure masteredKeys always exists (for users saved before this version)
+  if (!userState[u.id].masteredKeys) userState[u.id].masteredKeys = [];
+  if (!userState[u.id].sessionLog)   userState[u.id].sessionLog   = [];
+  if (!userState[u.id].globalKept)   userState[u.id].globalKept   = 0;
+  if (!userState[u.id].maxStreak)    userState[u.id].maxStreak    = 0;
+});
+
+let currentUser = null;
+
+// ═══════════════════════════════════════
+// CATEGORIES
+// ═══════════════════════════════════════
+const CATEGORIES = [
+  { id:'greetings',  label:'👋 Greetings',   type:'vocab' },
+  { id:'numbers',    label:'🔢 Numbers',      type:'vocab' },
+  { id:'time',       label:'⏰ Time & Days',  type:'vocab' },
+  { id:'colors',     label:'🎨 Colors',       type:'vocab' },
+  { id:'food',       label:'🍽️ Food & Drink', type:'vocab' },
+  { id:'family',     label:'👨‍👩‍👧 Family',      type:'vocab' },
+  { id:'body',       label:'🫀 Body',         type:'vocab' },
+  { id:'verbs',      label:'⚡ Verbs',        type:'vocab' },
+  { id:'adjectives', label:'✨ Adjectives',   type:'vocab' },
+  { id:'travel',     label:'✈️ Travel',       type:'vocab' },
+  { id:'home',       label:'🏠 Home',         type:'vocab' },
+  { id:'nature',     label:'🌿 Nature',       type:'vocab' },
+  { id:'work',       label:'💼 Work',         type:'vocab' },
+  { id:'emotions',   label:'💭 Emotions',     type:'vocab' },
+  { id:'phrases',    label:'💬 Phrases',      type:'phrase', special:true },
+];
+
+let selectedCats = new Set(CATEGORIES.map(c => c.id));
+let mode = 'fr';
+
+// ═══════════════════════════════════════
+// DECK STATE
+// ═══════════════════════════════════════
+let deck = [];
+let totalCards = 0;
+let currentIndex = 0;
+let isFlipped = false;
+let scores = { mastered:0, kept:0, wrong:0, streak:0, bestStreak:0 };
+
+// History for back-navigation (stores snapshots of recently seen cards)
+let cardHistory = [];   // array of card objects (read-only review)
+
+// Session log: persisted per user in userState until Reset Mastered Cards
+// Format: { fr, en, result: 'correct'|'wrong'|'skipped' }
+function getSessionLog() {
+  if (!currentUser) return [];
+  return userState[currentUser.id].sessionLog || [];
+}
+function saveSessionLog(log) {
+  if (!currentUser) return;
+  userState[currentUser.id].sessionLog = log;
+  saveUserState();
+}
+function addToSessionLog(card, result) {
+  const log = getSessionLog();
+  log.unshift({ fr: card.fr, en: card.en, literal: card.literal || '', result }); // newest first
+  if (log.length > 500) log.length = 500;
+  saveSessionLog(log);
+  renderSessionLog();
+}
+
+// ═══════════════════════════════════════
+// USER PICKER
+// ═══════════════════════════════════════
+function buildUserPicker() {
+  const container = document.getElementById('userCards');
+  container.innerHTML = '';
+  USERS.forEach(u => {
+    const st = userState[u.id];
+    const card = document.createElement('div');
+    card.className = 'user-card';
+    card.onclick = () => selectUser(u.id);
+    const masteredCount = (st.masteredKeys || []).length;
+    const statsStr = st.totalSessions > 0
+      ? masteredCount + ' mastered · Best Streak ' + (st.maxStreak || st.bestStreak || 0)
+      : 'Ti ha tutuhon — sigi ya un tutuhon!';
+    const bg = u.solidBg ? u.color : u.color + '33';
+    card.innerHTML = `<div class="user-avatar" style="background:${bg};font-size:1.4rem">${u.emoji}</div>` + `
+      <div class="user-info">
+        <div class="user-name">${u.name}</div>
+        <div class="user-stats">${statsStr}</div>
+      </div>`;
+    container.appendChild(card);
+  });
+}
+
+function selectUser(id) {
+  currentUser = USERS.find(u => u.id === id);
+  // Load this user's persistent mastered keys
+  masteredKeys = new Set(userState[currentUser.id].masteredKeys || []);
+  scores = { mastered:0, kept:0, wrong:0, streak:0, bestStreak:0 };
+  cardHistory = [];
+  document.getElementById('userPicker').style.display = 'none';
+  document.getElementById('setup').style.display = 'flex';
+  selectedCats = new Set(CATEGORIES.map(c => c.id));
+  buildCatGrid();
+  resetStartBtn();
+}
+
+function goToSetup() {
+  // Go back to category/mode selection without resetting scores or deck
+  document.getElementById('study').style.display = 'none';
+  document.getElementById('setup').style.display = 'flex';
+}
+
+function goToUserPicker() {
+  saveUserState(); // always save before leaving
+  ['setup','study','complete'].forEach(id => document.getElementById(id).style.display = 'none');
+  document.getElementById('userPicker').style.display = 'flex';
+  buildUserPicker();
+}
+
+// ═══════════════════════════════════════
+// SETUP
+// ═══════════════════════════════════════
+function buildCatGrid() {
+  const grid = document.getElementById('catGrid');
+  grid.innerHTML = '';
+  const allChip = document.createElement('button');
+  allChip.className = 'cat-chip selected'; allChip.id = 'chip-all';
+  allChip.textContent = '✦ All'; allChip.onclick = toggleAll;
+  grid.appendChild(allChip);
+  CATEGORIES.forEach(cat => {
+    const chip = document.createElement('button');
+    chip.className = 'cat-chip selected' + (cat.special ? ' phrases' : '');
+    chip.id = 'chip-' + cat.id;
+    chip.textContent = cat.label;
+    chip.onclick = () => toggleCat(cat.id);
+    grid.appendChild(chip);
+  });
+}
+
+function toggleCat(id) {
+  if (selectedCats.has(id)) {
+    if (selectedCats.size === 1) return;
+    selectedCats.delete(id);
+  } else {
+    selectedCats.add(id);
+  }
+  document.getElementById('chip-' + id).classList.toggle('selected', selectedCats.has(id));
+  document.getElementById('chip-all').classList.toggle('selected', selectedCats.size === CATEGORIES.length);
+}
+
+function toggleAll() {
+  const allSel = selectedCats.size === CATEGORIES.length;
+  selectedCats = allSel ? new Set(['greetings']) : new Set(CATEGORIES.map(c => c.id));
+  CATEGORIES.forEach(c => document.getElementById('chip-' + c.id).classList.toggle('selected', selectedCats.has(c.id)));
+  document.getElementById('chip-all').classList.toggle('selected', !allSel);
+}
+
+function selectMode(m) {
+  mode = m;
+  document.getElementById('btn-fr').classList.toggle('selected', m === 'fr');
+  document.getElementById('btn-en').classList.toggle('selected', m === 'en');
+}
+
+function resetStartBtn() {
+  const btn = document.getElementById('startBtn');
+  btn.disabled = false;
+  btn.textContent = 'Start Studying';
+}
+
+// ═══════════════════════════════════════
+// CARD DATA (embedded — no API needed)
+// ═══════════════════════════════════════
+
+const ALL_CARDS = [{"fr":"Håfa Adai","en":"Hello / Greetings","literal":"What is it / How goes it","pos":"interj.","cat":"greetings"},{"fr":"Buenas","en":"Hello / Good day (Spanish loanword)","literal":"Good ones","pos":"interj.","cat":"greetings"},{"fr":"Buenas dias","en":"Good morning","literal":"Good days","pos":"interj.","cat":"greetings"},{"fr":"Buenas tåtdes","en":"Good afternoon","literal":"Good afternoons","pos":"interj.","cat":"greetings"},{"fr":"Buenas noches","en":"Good evening / Good night","literal":"Good nights","pos":"interj.","cat":"greetings"},{"fr":"Adios","en":"Goodbye","literal":"To God","pos":"interj.","cat":"greetings"},{"fr":"Asta agupa'","en":"See you tomorrow","literal":"Until tomorrow","pos":"interj.","cat":"greetings"},{"fr":"Asta ki","en":"See you later","literal":"Until when","pos":"interj.","cat":"greetings"},{"fr":"Si Yu'us Ma'åse'","en":"Thank you","literal":"God's mercy / grace","pos":"interj.","cat":"greetings"},{"fr":"Ti nai","en":"You're welcome","literal":"It is nothing","pos":"interj.","cat":"greetings"},{"fr":"Dispensa yu'","en":"Excuse me / I'm sorry","literal":"Excuse me","pos":"interj.","cat":"greetings"},{"fr":"Perdona yu'","en":"Forgive me / Pardon me","literal":"Pardon me","pos":"interj.","cat":"greetings"},{"fr":"Håfa","en":"What / What's up","literal":"What","pos":"interj.","cat":"greetings"},{"fr":"Håfa tatatmanu hao","en":"How are you?","literal":"What how-is you","pos":"interj.","cat":"greetings"},{"fr":"Maolek","en":"Good / Fine","literal":"Good","pos":"adj.","cat":"greetings"},{"fr":"Ti maolek","en":"Not good / Bad","literal":"Not good","pos":"adj.","cat":"greetings"},{"fr":"Hunggan","en":"Yes","literal":"Yes","pos":"interj.","cat":"greetings"},{"fr":"Ahe'","en":"No","literal":"No","pos":"interj.","cat":"greetings"},{"fr":"Esta","en":"Already / OK / Done","literal":"Already","pos":"adv.","cat":"greetings"},{"fr":"Sigi","en":"Go ahead / Continue / OK","literal":"Go on","pos":"interj.","cat":"greetings"},{"fr":"Håyi hao","en":"Who are you?","literal":"Who you","pos":"interj.","cat":"greetings"},{"fr":"Håyi i na'ån-mu","en":"What is your name?","literal":"Who the name-your","pos":"interj.","cat":"greetings"},{"fr":"I na'ån-hu si...","en":"My name is...","literal":"The name-my is...","pos":"interj.","cat":"greetings"},{"fr":"Encantao/Encantada","en":"Nice to meet you","literal":"Enchanted","pos":"interj.","cat":"greetings"},{"fr":"Biba","en":"Hurray / Long live","literal":"Live / Cheer","pos":"interj.","cat":"greetings"},{"fr":"Salute","en":"Cheers / To your health","literal":"Health","pos":"interj.","cat":"greetings"},{"fr":"Felis kumpleaños","en":"Happy birthday","literal":"Happy birthday","pos":"interj.","cat":"greetings"},{"fr":"Felis Nabidat","en":"Merry Christmas","literal":"Happy Christmas","pos":"interj.","cat":"greetings"},{"fr":"Felis Åño Nuebu","en":"Happy New Year","literal":"Happy New Year","pos":"interj.","cat":"greetings"},{"fr":"Bien binidu","en":"Welcome","literal":"Well arrived","pos":"interj.","cat":"greetings"},{"fr":"Na' puti'on","en":"Congratulations","literal":"Make it shine","pos":"interj.","cat":"greetings"},{"fr":"Bonecho","en":"Good luck","literal":"Good deed","pos":"interj.","cat":"greetings"},{"fr":"Håfa na'måmaolek hao","en":"What's good with you?","literal":"What makes-good you","pos":"interj.","cat":"greetings"},{"fr":"Munga","en":"Don't / Stop","literal":"Don't","pos":"interj.","cat":"greetings"},{"fr":"Ciao","en":"Bye (informal)","literal":"Goodbye","pos":"interj.","cat":"greetings"},{"fr":"Håfa (numero)","en":"zero (numeral context)","literal":"what / nothing","pos":"n.","cat":"numbers"},{"fr":"Uno","en":"one","literal":"one","pos":"n.","cat":"numbers"},{"fr":"Dos","en":"two","literal":"two","pos":"n.","cat":"numbers"},{"fr":"Tres","en":"three","literal":"three","pos":"n.","cat":"numbers"},{"fr":"Kuåttro","en":"four","literal":"four","pos":"n.","cat":"numbers"},{"fr":"Singko","en":"five","literal":"five","pos":"n.","cat":"numbers"},{"fr":"Sais","en":"six","literal":"six","pos":"n.","cat":"numbers"},{"fr":"Siette","en":"seven","literal":"seven","pos":"n.","cat":"numbers"},{"fr":"Ocho","en":"eight","literal":"eight","pos":"n.","cat":"numbers"},{"fr":"Nuebi","en":"nine","literal":"nine","pos":"n.","cat":"numbers"},{"fr":"Dies","en":"ten","literal":"ten","pos":"n.","cat":"numbers"},{"fr":"Onse","en":"eleven","literal":"eleven","pos":"n.","cat":"numbers"},{"fr":"Dose","en":"twelve","literal":"twelve","pos":"n.","cat":"numbers"},{"fr":"Trese","en":"thirteen","literal":"thirteen","pos":"n.","cat":"numbers"},{"fr":"Katotse","en":"fourteen","literal":"fourteen","pos":"n.","cat":"numbers"},{"fr":"Kinse","en":"fifteen","literal":"fifteen","pos":"n.","cat":"numbers"},{"fr":"Diesisais","en":"sixteen","literal":"ten-six","pos":"n.","cat":"numbers"},{"fr":"Diesisiette","en":"seventeen","literal":"ten-seven","pos":"n.","cat":"numbers"},{"fr":"Diesiocho","en":"eighteen","literal":"ten-eight","pos":"n.","cat":"numbers"},{"fr":"Diesinuebi","en":"nineteen","literal":"ten-nine","pos":"n.","cat":"numbers"},{"fr":"Bente","en":"twenty","literal":"twenty","pos":"n.","cat":"numbers"},{"fr":"Trenta","en":"thirty","literal":"thirty","pos":"n.","cat":"numbers"},{"fr":"Kuårenta","en":"forty","literal":"forty","pos":"n.","cat":"numbers"},{"fr":"Sinkuenta","en":"fifty","literal":"fifty","pos":"n.","cat":"numbers"},{"fr":"Sisenta","en":"sixty","literal":"sixty","pos":"n.","cat":"numbers"},{"fr":"Setenta","en":"seventy","literal":"seventy","pos":"n.","cat":"numbers"},{"fr":"Ochenta","en":"eighty","literal":"eighty","pos":"n.","cat":"numbers"},{"fr":"Nobenta","en":"ninety","literal":"ninety","pos":"n.","cat":"numbers"},{"fr":"Siento","en":"one hundred","literal":"hundred","pos":"n.","cat":"numbers"},{"fr":"Mit","en":"one thousand","literal":"thousand","pos":"n.","cat":"numbers"},{"fr":"Lunes","en":"Monday","literal":"Moon's day","pos":"n.","cat":"time"},{"fr":"Måttes","en":"Tuesday","literal":"Mars's day","pos":"n.","cat":"time"},{"fr":"Metkoles","en":"Wednesday","literal":"Mercury's day","pos":"n.","cat":"time"},{"fr":"Huebes","en":"Thursday","literal":"Jupiter's day","pos":"n.","cat":"time"},{"fr":"Betnes","en":"Friday","literal":"Venus's day","pos":"n.","cat":"time"},{"fr":"Såbålu","en":"Saturday","literal":"Sabbath day","pos":"n.","cat":"time"},{"fr":"Damenggo","en":"Sunday","literal":"Lord's day","pos":"n.","cat":"time"},{"fr":"Eneru","en":"January","literal":"January","pos":"n.","cat":"time"},{"fr":"Febreru","en":"February","literal":"February","pos":"n.","cat":"time"},{"fr":"Måtso","en":"March","literal":"March","pos":"n.","cat":"time"},{"fr":"Åbrit","en":"April","literal":"April","pos":"n.","cat":"time"},{"fr":"Mayu","en":"May","literal":"May","pos":"n.","cat":"time"},{"fr":"Hunyo","en":"June","literal":"June","pos":"n.","cat":"time"},{"fr":"Hulio","en":"July","literal":"July","pos":"n.","cat":"time"},{"fr":"Agosto","en":"August","literal":"August","pos":"n.","cat":"time"},{"fr":"Septembre","en":"September","literal":"September","pos":"n.","cat":"time"},{"fr":"Oktubre","en":"October","literal":"October","pos":"n.","cat":"time"},{"fr":"Nubembre","en":"November","literal":"November","pos":"n.","cat":"time"},{"fr":"Desiembre","en":"December","literal":"December","pos":"n.","cat":"time"},{"fr":"På'go","en":"now / today","literal":"now","pos":"adv.","cat":"time"},{"fr":"Agupa'","en":"tomorrow","literal":"tomorrow","pos":"adv.","cat":"time"},{"fr":"Nigap","en":"yesterday","literal":"yesterday","pos":"adv.","cat":"time"},{"fr":"Oran","en":"time / hour","literal":"hour","pos":"n.","cat":"time"},{"fr":"Puengi","en":"night","literal":"night","pos":"n.","cat":"time"},{"fr":"Egga'an","en":"morning","literal":"morning","pos":"n.","cat":"time"},{"fr":"Tåtdes","en":"afternoon","literal":"afternoon","pos":"n.","cat":"time"},{"fr":"Simana","en":"week","literal":"week","pos":"n.","cat":"time"},{"fr":"Mes","en":"month","literal":"month","pos":"n.","cat":"time"},{"fr":"Åño","en":"year","literal":"year","pos":"n.","cat":"time"},{"fr":"Siempre","en":"always / will","literal":"always","pos":"adv.","cat":"time"},{"fr":"Ti siempre","en":"never","literal":"not always","pos":"adv.","cat":"time"},{"fr":"Daffinasion","en":"sometimes","literal":"sometimes","pos":"adv.","cat":"time"},{"fr":"Estague","en":"right now / here it is","literal":"here now","pos":"adv.","cat":"time"},{"fr":"Antes","en":"before / earlier","literal":"before","pos":"adv.","cat":"time"},{"fr":"Despues","en":"after / later","literal":"after","pos":"adv.","cat":"time"},{"fr":"Kulot","en":"color","literal":"color","pos":"n.","cat":"colors"},{"fr":"Agaga'","en":"red","literal":"redness","pos":"adj.","cat":"colors"},{"fr":"Asut","en":"blue","literal":"blue","pos":"adj.","cat":"colors"},{"fr":"Betde","en":"green","literal":"green","pos":"adj.","cat":"colors"},{"fr":"Amariyu","en":"yellow","literal":"yellow","pos":"adj.","cat":"colors"},{"fr":"Nalang","en":"orange (color)","literal":"orange-like","pos":"adj.","cat":"colors"},{"fr":"Morådo","en":"purple","literal":"purple","pos":"adj.","cat":"colors"},{"fr":"Rosådu","en":"pink","literal":"rosy","pos":"adj.","cat":"colors"},{"fr":"Attilong","en":"black","literal":"blackness","pos":"adj.","cat":"colors"},{"fr":"Åpaka'","en":"white","literal":"whiteness","pos":"adj.","cat":"colors"},{"fr":"Pångpang","en":"grey","literal":"grey","pos":"adj.","cat":"colors"},{"fr":"Maråron","en":"brown","literal":"brown","pos":"adj.","cat":"colors"},{"fr":"Dorådu","en":"golden / gold-colored","literal":"gilded","pos":"adj.","cat":"colors"},{"fr":"Plateådu","en":"silver-colored","literal":"silvered","pos":"adj.","cat":"colors"},{"fr":"Ånsigao","en":"light (color)","literal":"light-colored","pos":"adj.","cat":"colors"},{"fr":"Amfong","en":"dark (color)","literal":"dark","pos":"adj.","cat":"colors"},{"fr":"Mafñot","en":"bright / vivid","literal":"bright","pos":"adj.","cat":"colors"},{"fr":"Betde tåsi","en":"turquoise / ocean green","literal":"green of sea","pos":"adj.","cat":"colors"},{"fr":"Mångge","en":"food","literal":"food","pos":"n.","cat":"food"},{"fr":"Pan","en":"bread","literal":"bread","pos":"n.","cat":"food"},{"fr":"Håyu","en":"coconut","literal":"coconut tree / coconut","pos":"n.","cat":"food"},{"fr":"Hineksa'","en":"cooked rice","literal":"that which is cooked","pos":"n.","cat":"food"},{"fr":"Atulai","en":"yellowfin tuna","literal":"yellowfin","pos":"n.","cat":"food"},{"fr":"Guihan","en":"fish","literal":"fish","pos":"n.","cat":"food"},{"fr":"Kåtne","en":"meat","literal":"meat / flesh","pos":"n.","cat":"food"},{"fr":"Mannok","en":"chicken","literal":"bird / chicken","pos":"n.","cat":"food"},{"fr":"Babui","en":"pork / pig","literal":"pig","pos":"n.","cat":"food"},{"fr":"Dikike' na guihan","en":"small fish","literal":"small fish","pos":"n.","cat":"food"},{"fr":"Gollai","en":"vegetable","literal":"vegetable","pos":"n.","cat":"food"},{"fr":"Fruta","en":"fruit","literal":"fruit","pos":"n.","cat":"food"},{"fr":"Mansana","en":"apple","literal":"apple","pos":"n.","cat":"food"},{"fr":"Månha","en":"young coconut","literal":"young coconut","pos":"n.","cat":"food"},{"fr":"Lemmai","en":"breadfruit","literal":"breadfruit","pos":"n.","cat":"food"},{"fr":"Fanihi","en":"fruit bat (eaten as delicacy)","literal":"flying fox","pos":"n.","cat":"food"},{"fr":"Tomåtes","en":"tomato","literal":"tomato","pos":"n.","cat":"food"},{"fr":"Sibuyas","en":"onion","literal":"onion","pos":"n.","cat":"food"},{"fr":"Aho","en":"garlic","literal":"garlic","pos":"n.","cat":"food"},{"fr":"Espinaka","en":"spinach","literal":"spinach","pos":"n.","cat":"food"},{"fr":"Aga'","en":"banana","literal":"banana","pos":"n.","cat":"food"},{"fr":"Petta","en":"papaya","literal":"papaya","pos":"n.","cat":"food"},{"fr":"Åchote","en":"annatto / achiote (red spice)","literal":"achiote","pos":"n.","cat":"food"},{"fr":"Dångkulu na kå'kå'","en":"crab","literal":"large crab","pos":"n.","cat":"food"},{"fr":"Uhang","en":"shrimp","literal":"shrimp","pos":"n.","cat":"food"},{"fr":"Åsos","en":"salt","literal":"salt","pos":"n.","cat":"food"},{"fr":"Åsukar","en":"sugar","literal":"sugar","pos":"n.","cat":"food"},{"fr":"Pimienta","en":"pepper","literal":"pepper","pos":"n.","cat":"food"},{"fr":"Åsieti","en":"oil","literal":"oil","pos":"n.","cat":"food"},{"fr":"Mantikiya","en":"butter","literal":"butter","pos":"n.","cat":"food"},{"fr":"Keso","en":"cheese","literal":"cheese","pos":"n.","cat":"food"},{"fr":"Ilu'","en":"egg","literal":"egg","pos":"n.","cat":"food"},{"fr":"Leche","en":"milk","literal":"milk","pos":"n.","cat":"food"},{"fr":"Hånom","en":"water","literal":"water","pos":"n.","cat":"food"},{"fr":"Kafe","en":"coffee","literal":"coffee","pos":"n.","cat":"food"},{"fr":"Te","en":"tea","literal":"tea","pos":"n.","cat":"food"},{"fr":"Hugu","en":"juice","literal":"juice / liquid","pos":"n.","cat":"food"},{"fr":"Birra","en":"beer","literal":"beer","pos":"n.","cat":"food"},{"fr":"Tuba","en":"coconut wine / toddy","literal":"palm wine","pos":"n.","cat":"food"},{"fr":"Åguårdiente","en":"local cane liquor","literal":"burning water","pos":"n.","cat":"food"},{"fr":"Kåchi","en":"soup / broth","literal":"broth","pos":"n.","cat":"food"},{"fr":"Finadene'","en":"Chamorro hot sauce / condiment","literal":"that which is made spicy","pos":"n.","cat":"food"},{"fr":"Kelaguen","en":"Chamorro marinated dish","literal":"that which is lemon-dressed","pos":"n.","cat":"food"},{"fr":"Chårres","en":"grilled meat on skewer","literal":"charred pieces","pos":"n.","cat":"food"},{"fr":"Laddo'","en":"soup / stew","literal":"stew","pos":"n.","cat":"food"},{"fr":"Gisu","en":"clay pot / cooking pot","literal":"clay pot","pos":"n.","cat":"food"},{"fr":"Plåtu","en":"plate / dish","literal":"plate","pos":"n.","cat":"food"},{"fr":"Tenedot","en":"fork","literal":"fork","pos":"n.","cat":"food"},{"fr":"Kutsåra","en":"spoon","literal":"spoon","pos":"n.","cat":"food"},{"fr":"Kutsiyu","en":"knife","literal":"knife","pos":"n.","cat":"food"},{"fr":"Båsu","en":"glass / cup","literal":"glass","pos":"n.","cat":"food"},{"fr":"Boteya","en":"bottle","literal":"bottle","pos":"n.","cat":"food"},{"fr":"Meryenda","en":"snack","literal":"afternoon snack","pos":"n.","cat":"food"},{"fr":"Åmot","en":"medicine / herb","literal":"medicine","pos":"n.","cat":"food"},{"fr":"Nenkan","en":"to eat (act of eating)","literal":"eating","pos":"n.","cat":"food"},{"fr":"Familia","en":"family","literal":"family","pos":"n.","cat":"family"},{"fr":"Nåna","en":"mother / mom","literal":"mother","pos":"n.","cat":"family"},{"fr":"Tåta","en":"father / dad","literal":"father","pos":"n.","cat":"family"},{"fr":"Lahi","en":"son / male","literal":"male / man","pos":"n.","cat":"family"},{"fr":"Påtgon palao'an","en":"daughter / girl","literal":"child female","pos":"n.","cat":"family"},{"fr":"Påtgon","en":"child","literal":"child","pos":"n.","cat":"family"},{"fr":"Che'lu låhi","en":"brother","literal":"sibling male","pos":"n.","cat":"family"},{"fr":"Che'lu palao'an","en":"sister","literal":"sibling female","pos":"n.","cat":"family"},{"fr":"Biha","en":"grandmother","literal":"old woman","pos":"n.","cat":"family"},{"fr":"Bihu","en":"grandfather","literal":"old man","pos":"n.","cat":"family"},{"fr":"Tia","en":"aunt","literal":"aunt","pos":"n.","cat":"family"},{"fr":"Tio","en":"uncle","literal":"uncle","pos":"n.","cat":"family"},{"fr":"Pråmu","en":"male cousin","literal":"cousin (m)","pos":"n.","cat":"family"},{"fr":"Påtma","en":"female cousin","literal":"cousin (f)","pos":"n.","cat":"family"},{"fr":"Asagua","en":"spouse / husband or wife","literal":"spouse","pos":"n.","cat":"family"},{"fr":"Asaguan låhi","en":"husband","literal":"spouse male","pos":"n.","cat":"family"},{"fr":"Asaguan palao'an","en":"wife","literal":"spouse female","pos":"n.","cat":"family"},{"fr":"Palao'an","en":"woman / female","literal":"female","pos":"n.","cat":"family"},{"fr":"Låhi","en":"man / male","literal":"male","pos":"n.","cat":"family"},{"fr":"Neni","en":"baby / infant","literal":"baby","pos":"n.","cat":"family"},{"fr":"Biha yan bihu","en":"grandparents","literal":"grandmother and grandfather","pos":"n.","cat":"family"},{"fr":"Hinagong","en":"relative / kin","literal":"kin relation","pos":"n.","cat":"family"},{"fr":"Sobrinu","en":"nephew","literal":"nephew","pos":"n.","cat":"family"},{"fr":"Sobrena","en":"niece","literal":"niece","pos":"n.","cat":"family"},{"fr":"Padrinu","en":"godfather","literal":"godfather","pos":"n.","cat":"family"},{"fr":"Madrena","en":"godmother","literal":"godmother","pos":"n.","cat":"family"},{"fr":"Nihu","en":"grandchild","literal":"grandchild","pos":"n.","cat":"family"},{"fr":"Åmko'","en":"elder / elderly person","literal":"elder","pos":"n.","cat":"family"},{"fr":"Hoben","en":"youth / young person","literal":"young one","pos":"n.","cat":"family"},{"fr":"Kaibigan","en":"friend","literal":"friend","pos":"n.","cat":"family"},{"fr":"Åkupåsion","en":"body","literal":"body","pos":"n.","cat":"body"},{"fr":"Ilu","en":"head","literal":"head","pos":"n.","cat":"body"},{"fr":"Mata","en":"eye / face","literal":"eye / face","pos":"n.","cat":"body"},{"fr":"Atilong-mata","en":"pupil of the eye","literal":"black of eye","pos":"n.","cat":"body"},{"fr":"Gige'","en":"nose","literal":"nose","pos":"n.","cat":"body"},{"fr":"Pachot","en":"mouth","literal":"mouth","pos":"n.","cat":"body"},{"fr":"Nifen","en":"tooth / teeth","literal":"teeth","pos":"n.","cat":"body"},{"fr":"Leng'a","en":"tongue","literal":"tongue","pos":"n.","cat":"body"},{"fr":"Talanga","en":"ear","literal":"ear","pos":"n.","cat":"body"},{"fr":"Åggak","en":"neck","literal":"neck","pos":"n.","cat":"body"},{"fr":"Pakpak","en":"wing / shoulder blade","literal":"wing / flap","pos":"n.","cat":"body"},{"fr":"Braso","en":"arm","literal":"arm","pos":"n.","cat":"body"},{"fr":"Kåkang","en":"hand / arm (general)","literal":"hand","pos":"n.","cat":"body"},{"fr":"Nengkånno","en":"finger","literal":"little arm","pos":"n.","cat":"body"},{"fr":"Pecho","en":"chest","literal":"chest","pos":"n.","cat":"body"},{"fr":"Tatalo'","en":"back (of body)","literal":"back","pos":"n.","cat":"body"},{"fr":"Tuyan","en":"stomach / belly","literal":"belly","pos":"n.","cat":"body"},{"fr":"Kadera","en":"hip","literal":"hip","pos":"n.","cat":"body"},{"fr":"Påtas","en":"leg / foot","literal":"leg","pos":"n.","cat":"body"},{"fr":"Tuhong","en":"knee","literal":"knee","pos":"n.","cat":"body"},{"fr":"Addeng","en":"foot","literal":"foot","pos":"n.","cat":"body"},{"fr":"Kurason","en":"heart","literal":"heart","pos":"n.","cat":"body"},{"fr":"Tåinok","en":"blood","literal":"blood","pos":"n.","cat":"body"},{"fr":"Åggong","en":"bone","literal":"bone","pos":"n.","cat":"body"},{"fr":"Lasas","en":"skin","literal":"skin","pos":"n.","cat":"body"},{"fr":"Gapotulu","en":"hair (on head)","literal":"hair of head","pos":"n.","cat":"body"},{"fr":"Lassas","en":"muscle","literal":"sinew / muscle","pos":"n.","cat":"body"},{"fr":"Utot","en":"brain","literal":"brain","pos":"n.","cat":"body"},{"fr":"Gimen","en":"drink / liquid","literal":"that which is drunk","pos":"n.","cat":"body"},{"fr":"Malangu","en":"sick / ill","literal":"sick","pos":"adj.","cat":"body"},{"fr":"Guåha","en":"there is / to exist / to have","literal":"exists","pos":"v.","cat":"verbs"},{"fr":"Ti guåha","en":"there is not / doesn't exist","literal":"not exists","pos":"v.","cat":"verbs"},{"fr":"Måtto","en":"to come / to arrive","literal":"to come","pos":"v.","cat":"verbs"},{"fr":"Hanao","en":"to go","literal":"to go","pos":"v.","cat":"verbs"},{"fr":"Hånao","en":"to leave / go away","literal":"go","pos":"v.","cat":"verbs"},{"fr":"Chocho","en":"to eat","literal":"to eat","pos":"v.","cat":"verbs"},{"fr":"Gimen","en":"to drink","literal":"to drink","pos":"v.","cat":"verbs"},{"fr":"Måñotsot","en":"to sleep","literal":"to sleep","pos":"v.","cat":"verbs"},{"fr":"Fåtto","en":"to arrive / to come","literal":"to arrive","pos":"v.","cat":"verbs"},{"fr":"Sangan","en":"to say / to speak","literal":"to say","pos":"v.","cat":"verbs"},{"fr":"Tuge'","en":"to write","literal":"to write","pos":"v.","cat":"verbs"},{"fr":"Taitai","en":"to read","literal":"to read","pos":"v.","cat":"verbs"},{"fr":"Hungok","en":"to hear / to listen","literal":"to hear","pos":"v.","cat":"verbs"},{"fr":"Lili'e'","en":"to see / to look","literal":"to see","pos":"v.","cat":"verbs"},{"fr":"Faisen","en":"to ask","literal":"to ask","pos":"v.","cat":"verbs"},{"fr":"Na'i","en":"to give","literal":"to give","pos":"v.","cat":"verbs"},{"fr":"Chule'","en":"to take","literal":"to take","pos":"v.","cat":"verbs"},{"fr":"Na'suette","en":"to help","literal":"to make lucky / assist","pos":"v.","cat":"verbs"},{"fr":"Ayuda","en":"to help / to aid","literal":"to aid","pos":"v.","cat":"verbs"},{"fr":"Sangani","en":"to tell someone","literal":"to say to someone","pos":"v.","cat":"verbs"},{"fr":"Nå'i","en":"to give to someone","literal":"to give to","pos":"v.","cat":"verbs"},{"fr":"Hahasso","en":"to think / to remember","literal":"to think","pos":"v.","cat":"verbs"},{"fr":"Håsso","en":"to think / to remember","literal":"to think","pos":"v.","cat":"verbs"},{"fr":"Tungo'","en":"to know","literal":"to know","pos":"v.","cat":"verbs"},{"fr":"Ti tungo'","en":"to not know","literal":"not know","pos":"v.","cat":"verbs"},{"fr":"Na'fanmaolek","en":"to fix / to make good","literal":"to make all-good","pos":"v.","cat":"verbs"},{"fr":"Guaiya","en":"to love","literal":"to love","pos":"v.","cat":"verbs"},{"fr":"Malago'","en":"to want","literal":"to want","pos":"v.","cat":"verbs"},{"fr":"Munga","en":"to not want / don't","literal":"don't want","pos":"v.","cat":"verbs"},{"fr":"Kahat","en":"to work / to toil","literal":"to labor","pos":"v.","cat":"verbs"},{"fr":"Cho'gue","en":"to do / to make","literal":"to do","pos":"v.","cat":"verbs"},{"fr":"Sodda'","en":"to find","literal":"to find","pos":"v.","cat":"verbs"},{"fr":"Bisita","en":"to visit","literal":"to visit","pos":"v.","cat":"verbs"},{"fr":"Fanhanao","en":"to travel / to go (pl.)","literal":"to go all","pos":"v.","cat":"verbs"},{"fr":"Nå'nå'","en":"to carry / to bring","literal":"to carry","pos":"v.","cat":"verbs"},{"fr":"Pokkat","en":"to walk","literal":"to walk","pos":"v.","cat":"verbs"},{"fr":"Bula","en":"to swim","literal":"to swim","pos":"v.","cat":"verbs"},{"fr":"Chåchak","en":"to run","literal":"to run","pos":"v.","cat":"verbs"},{"fr":"Dånsa","en":"to dance","literal":"to dance","pos":"v.","cat":"verbs"},{"fr":"Kånta","en":"to sing","literal":"to sing","pos":"v.","cat":"verbs"},{"fr":"Åsson","en":"to lie down / to rest","literal":"to lie down","pos":"v.","cat":"verbs"},{"fr":"Tutuhon","en":"to begin / to start","literal":"to begin","pos":"v.","cat":"verbs"},{"fr":"Kåba","en":"to finish / to complete","literal":"to finish","pos":"v.","cat":"verbs"},{"fr":"Ågangi","en":"to call someone","literal":"to call to","pos":"v.","cat":"verbs"},{"fr":"Chåchague","en":"to cook","literal":"to cook","pos":"v.","cat":"verbs"},{"fr":"Hugåndo","en":"to play","literal":"to play","pos":"v.","cat":"verbs"},{"fr":"Påpå'","en":"to open","literal":"to open","pos":"v.","cat":"verbs"},{"fr":"Na'setbe","en":"to close / to shut","literal":"to make shut","pos":"v.","cat":"verbs"},{"fr":"Maleffa","en":"to forget","literal":"to forget","pos":"v.","cat":"verbs"},{"fr":"Åsson","en":"to wait","literal":"to wait / lie down","pos":"v.","cat":"verbs"},{"fr":"Tohge","en":"to stand","literal":"to stand","pos":"v.","cat":"verbs"},{"fr":"Mañotsot","en":"to be sorry / to regret","literal":"to be regretful","pos":"v.","cat":"verbs"},{"fr":"Fanohge","en":"to stand up (pl.)","literal":"to stand all","pos":"v.","cat":"verbs"},{"fr":"Fåhan","en":"to buy","literal":"to buy","pos":"v.","cat":"verbs"},{"fr":"Bende","en":"to sell","literal":"to sell","pos":"v.","cat":"verbs"},{"fr":"Pågå","en":"to pay","literal":"to pay","pos":"v.","cat":"verbs"},{"fr":"Plånta","en":"to plant / to grow","literal":"to plant","pos":"v.","cat":"verbs"},{"fr":"Sågå","en":"to stay / to live (somewhere)","literal":"to stay","pos":"v.","cat":"verbs"},{"fr":"Mama'te","en":"to kill / to hunt","literal":"to kill","pos":"v.","cat":"verbs"},{"fr":"Fanggue","en":"to fish","literal":"to fish","pos":"v.","cat":"verbs"},{"fr":"Maigo'","en":"to sleep","literal":"to sleep","pos":"v.","cat":"verbs"},{"fr":"Espiha","en":"to look for / to search","literal":"to spy / search","pos":"v.","cat":"verbs"},{"fr":"Kumekeilek-ña","en":"to mean / to signify","literal":"it says of itself","pos":"v.","cat":"verbs"},{"fr":"Tåhlek","en":"to fall","literal":"to fall","pos":"v.","cat":"verbs"},{"fr":"Puno'","en":"to kill / turn off","literal":"to extinguish","pos":"v.","cat":"verbs"},{"fr":"Na'maolek","en":"to fix / to repair","literal":"to make good","pos":"v.","cat":"verbs"},{"fr":"Cho'cho'","en":"to work","literal":"to labor","pos":"v.","cat":"verbs"},{"fr":"Ekungok","en":"to listen","literal":"to listen to","pos":"v.","cat":"verbs"},{"fr":"Komprende","en":"to understand","literal":"to understand","pos":"v.","cat":"verbs"},{"fr":"Deskånsa","en":"to rest","literal":"to rest","pos":"v.","cat":"verbs"},{"fr":"Empe'","en":"to answer / to respond","literal":"to answer","pos":"v.","cat":"verbs"},{"fr":"Prubecha","en":"to use / to benefit from","literal":"to make use of","pos":"v.","cat":"verbs"},{"fr":"Usa","en":"to use","literal":"to use","pos":"v.","cat":"verbs"},{"fr":"Achaigua","en":"to resemble / be similar","literal":"to be like","pos":"v.","cat":"verbs"},{"fr":"Atan","en":"to look at / to watch","literal":"to look","pos":"v.","cat":"verbs"},{"fr":"Gof guaiya","en":"to love very much","literal":"very love","pos":"v.","cat":"verbs"},{"fr":"Konfotme","en":"to agree","literal":"to conform","pos":"v.","cat":"verbs"},{"fr":"Dångkulu","en":"big / large","literal":"bigness","pos":"adj.","cat":"adjectives"},{"fr":"Dikike'","en":"small / little","literal":"smallness","pos":"adj.","cat":"adjectives"},{"fr":"Åttelong","en":"long / tall","literal":"tall / long","pos":"adj.","cat":"adjectives"},{"fr":"Pupuenge","en":"short (height)","literal":"shortness","pos":"adj.","cat":"adjectives"},{"fr":"Mafnas","en":"wide / broad","literal":"wide","pos":"adj.","cat":"adjectives"},{"fr":"Kadada'","en":"short (length)","literal":"shortness","pos":"adj.","cat":"adjectives"},{"fr":"Maolek","en":"good / fine / well","literal":"good","pos":"adj.","cat":"adjectives"},{"fr":"Tailaye","en":"bad / evil","literal":"without goodness","pos":"adj.","cat":"adjectives"},{"fr":"Bunitu","en":"beautiful / handsome (m)","literal":"beautiful","pos":"adj.","cat":"adjectives"},{"fr":"Bunita","en":"beautiful / pretty (f)","literal":"beautiful (f)","pos":"adj.","cat":"adjectives"},{"fr":"Åmbeng","en":"ugly","literal":"ugly","pos":"adj.","cat":"adjectives"},{"fr":"Maipe","en":"hot","literal":"hot","pos":"adj.","cat":"adjectives"},{"fr":"Mafñot","en":"cold","literal":"cold","pos":"adj.","cat":"adjectives"},{"fr":"Mamå'te","en":"new","literal":"new","pos":"adj.","cat":"adjectives"},{"fr":"Åmko'","en":"old (thing)","literal":"old","pos":"adj.","cat":"adjectives"},{"fr":"Hoben","en":"young","literal":"young","pos":"adj.","cat":"adjectives"},{"fr":"Metgot","en":"strong","literal":"strong","pos":"adj.","cat":"adjectives"},{"fr":"Maå'ñao","en":"scared / afraid","literal":"fearful","pos":"adj.","cat":"adjectives"},{"fr":"Gof","en":"very / really","literal":"very","pos":"adv.","cat":"adjectives"},{"fr":"Didide'","en":"a little / small amount","literal":"little bit","pos":"adv.","cat":"adjectives"},{"fr":"Meggai","en":"many / a lot","literal":"many","pos":"adj.","cat":"adjectives"},{"fr":"Betbo","en":"true / real","literal":"true","pos":"adj.","cat":"adjectives"},{"fr":"Ti betbo","en":"false / not true","literal":"not true","pos":"adj.","cat":"adjectives"},{"fr":"Mismo","en":"same / very / itself","literal":"same","pos":"adj.","cat":"adjectives"},{"fr":"Otro","en":"other / another","literal":"other","pos":"adj.","cat":"adjectives"},{"fr":"Solu","en":"alone / only","literal":"alone","pos":"adj.","cat":"adjectives"},{"fr":"Klåru","en":"clear / obvious","literal":"clear","pos":"adj.","cat":"adjectives"},{"fr":"Listo","en":"ready / smart","literal":"ready","pos":"adj.","cat":"adjectives"},{"fr":"Enteru","en":"whole / entire","literal":"entire","pos":"adj.","cat":"adjectives"},{"fr":"Perfekto","en":"perfect","literal":"perfect","pos":"adj.","cat":"adjectives"},{"fr":"Månnge'","en":"delicious / tasty","literal":"delicious","pos":"adj.","cat":"adjectives"},{"fr":"Åspruk","en":"sour","literal":"sour","pos":"adj.","cat":"adjectives"},{"fr":"Fina'tinas","en":"made / prepared","literal":"that which is made","pos":"adj.","cat":"adjectives"},{"fr":"Månglo'","en":"windy / breezy","literal":"windy","pos":"adj.","cat":"adjectives"},{"fr":"Mapot","en":"hard / difficult","literal":"hard","pos":"adj.","cat":"adjectives"},{"fr":"Lache","en":"wrong / incorrect","literal":"wrong","pos":"adj.","cat":"adjectives"},{"fr":"Manngge'","en":"fragrant / smells good","literal":"fragrant","pos":"adj.","cat":"adjectives"},{"fr":"Gof triste","en":"very sad","literal":"very sad","pos":"adj.","cat":"adjectives"},{"fr":"Triste","en":"sad","literal":"sad","pos":"adj.","cat":"adjectives"},{"fr":"Magof","en":"happy / glad","literal":"happy","pos":"adj.","cat":"adjectives"},{"fr":"Amko' na taotao","en":"elderly person","literal":"old person","pos":"adj.","cat":"adjectives"},{"fr":"Libre","en":"free / available","literal":"free","pos":"adj.","cat":"adjectives"},{"fr":"Okupao","en":"busy / occupied","literal":"occupied","pos":"adj.","cat":"adjectives"},{"fr":"Fåchet","en":"difficult / hard","literal":"difficult","pos":"adj.","cat":"adjectives"},{"fr":"Fasit","en":"easy / simple","literal":"easy","pos":"adj.","cat":"adjectives"},{"fr":"Pika","en":"spicy / hot (spice)","literal":"spicy","pos":"adj.","cat":"adjectives"},{"fr":"Mames","en":"sweet","literal":"sweet","pos":"adj.","cat":"adjectives"},{"fr":"Amårggu","en":"bitter","literal":"bitter","pos":"adj.","cat":"adjectives"},{"fr":"Nasakit","en":"painful / hurts","literal":"causing pain","pos":"adj.","cat":"adjectives"},{"fr":"Minetgot","en":"strength / strong","literal":"strength","pos":"adj.","cat":"adjectives"},{"fr":"Tinane'","en":"full (having eaten)","literal":"having fullness","pos":"adj.","cat":"adjectives"},{"fr":"Malangu","en":"sick / ill","literal":"sick","pos":"adj.","cat":"adjectives"},{"fr":"Sanu","en":"healthy / well","literal":"healthy","pos":"adj.","cat":"adjectives"},{"fr":"Båba","en":"bad / naughty","literal":"bad","pos":"adj.","cat":"adjectives"},{"fr":"Kuentos","en":"talkative / chatty","literal":"talkative","pos":"adj.","cat":"adjectives"},{"fr":"Tåsi","en":"sea / ocean","literal":"sea","pos":"n.","cat":"travel"},{"fr":"Isla","en":"island","literal":"island","pos":"n.","cat":"travel"},{"fr":"Tano'","en":"land / earth / ground","literal":"land","pos":"n.","cat":"travel"},{"fr":"Karetan","en":"road / street / car road","literal":"car path","pos":"n.","cat":"travel"},{"fr":"Chalan","en":"road / path / way","literal":"road / path","pos":"n.","cat":"travel"},{"fr":"Guma'","en":"house / home / building","literal":"house","pos":"n.","cat":"travel"},{"fr":"Sisu'on","en":"church","literal":"prayer place","pos":"n.","cat":"travel"},{"fr":"Tenda","en":"store / shop","literal":"tent / stall","pos":"n.","cat":"travel"},{"fr":"Eskuela","en":"school","literal":"school","pos":"n.","cat":"travel"},{"fr":"Ospitåt","en":"hospital","literal":"hospital","pos":"n.","cat":"travel"},{"fr":"Åmot-guma'","en":"pharmacy / medicine house","literal":"medicine house","pos":"n.","cat":"travel"},{"fr":"Banko","en":"bank","literal":"bank","pos":"n.","cat":"travel"},{"fr":"Hotdot","en":"hotel","literal":"hotel","pos":"n.","cat":"travel"},{"fr":"Kuåtto","en":"room","literal":"room","pos":"n.","cat":"travel"},{"fr":"Puerto","en":"port / harbor","literal":"port","pos":"n.","cat":"travel"},{"fr":"Aeropuetton","en":"airport","literal":"air port","pos":"n.","cat":"travel"},{"fr":"Batkon aire","en":"airplane","literal":"air boat","pos":"n.","cat":"travel"},{"fr":"Batko","en":"boat / ship","literal":"boat","pos":"n.","cat":"travel"},{"fr":"Karetan","en":"car","literal":"car / vehicle","pos":"n.","cat":"travel"},{"fr":"Chalan","en":"street / road","literal":"path","pos":"n.","cat":"travel"},{"fr":"Tren","en":"train","literal":"train","pos":"n.","cat":"travel"},{"fr":"Bisikleta","en":"bicycle","literal":"bicycle","pos":"n.","cat":"travel"},{"fr":"Taksi","en":"taxi","literal":"taxi","pos":"n.","cat":"travel"},{"fr":"Pasaporte","en":"passport","literal":"passport","pos":"n.","cat":"travel"},{"fr":"Mapa","en":"map","literal":"map","pos":"n.","cat":"travel"},{"fr":"Luga'","en":"place / location","literal":"place","pos":"n.","cat":"travel"},{"fr":"Tano'-ta","en":"our land / homeland","literal":"land-ours","pos":"n.","cat":"travel"},{"fr":"Håya","en":"north","literal":"north","pos":"n.","cat":"travel"},{"fr":"Hågu","en":"south","literal":"south","pos":"n.","cat":"travel"},{"fr":"Kattan","en":"east","literal":"east","pos":"n.","cat":"travel"},{"fr":"Luchan","en":"west","literal":"west","pos":"n.","cat":"travel"},{"fr":"Guåhan","en":"Guam","literal":"we have / place of Guam","pos":"n.","cat":"travel"},{"fr":"Saipan","en":"Saipan","literal":"Saipan (CNMI)","pos":"n.","cat":"travel"},{"fr":"Destino","en":"destination","literal":"destination","pos":"n.","cat":"travel"},{"fr":"Biahe","en":"trip / journey","literal":"voyage","pos":"n.","cat":"travel"},{"fr":"Atingan","en":"beach","literal":"shoreline","pos":"n.","cat":"travel"},{"fr":"Montåña","en":"mountain","literal":"mountain","pos":"n.","cat":"travel"},{"fr":"Trongkon","en":"forest / jungle","literal":"tree area","pos":"n.","cat":"travel"},{"fr":"Dikike' na tano'","en":"small land / village area","literal":"small land","pos":"n.","cat":"travel"},{"fr":"Puenge","en":"village / settlement","literal":"settlement","pos":"n.","cat":"travel"},{"fr":"Hånom-tåsi","en":"ocean water","literal":"water of sea","pos":"n.","cat":"travel"},{"fr":"Figo'","en":"cliff / rocky coast","literal":"cliff","pos":"n.","cat":"travel"},{"fr":"Saddok","en":"river / stream","literal":"river","pos":"n.","cat":"travel"},{"fr":"Bileti","en":"ticket","literal":"ticket","pos":"n.","cat":"travel"},{"fr":"Reserbasion","en":"reservation","literal":"reservation","pos":"n.","cat":"travel"},{"fr":"Guma'","en":"house / home","literal":"house","pos":"n.","cat":"home"},{"fr":"Kusina","en":"kitchen","literal":"kitchen","pos":"n.","cat":"home"},{"fr":"Kuåtto","en":"bedroom / room","literal":"room","pos":"n.","cat":"home"},{"fr":"Bånyo","en":"bathroom","literal":"bath / bathroom","pos":"n.","cat":"home"},{"fr":"Såla","en":"living room / hall","literal":"hall / parlor","pos":"n.","cat":"home"},{"fr":"Kumedor","en":"dining room","literal":"eating room","pos":"n.","cat":"home"},{"fr":"Pochu","en":"porch / veranda","literal":"porch","pos":"n.","cat":"home"},{"fr":"Tano'-guma'","en":"yard / land of house","literal":"land of house","pos":"n.","cat":"home"},{"fr":"Kåtre","en":"bed","literal":"bed","pos":"n.","cat":"home"},{"fr":"Tåmblun","en":"table","literal":"table","pos":"n.","cat":"home"},{"fr":"Siyan","en":"chair","literal":"chair","pos":"n.","cat":"home"},{"fr":"Puetta","en":"door","literal":"door","pos":"n.","cat":"home"},{"fr":"Bentåna","en":"window","literal":"window","pos":"n.","cat":"home"},{"fr":"Paredes","en":"wall","literal":"wall","pos":"n.","cat":"home"},{"fr":"Checho","en":"floor","literal":"floor","pos":"n.","cat":"home"},{"fr":"Atof","en":"roof","literal":"roof","pos":"n.","cat":"home"},{"fr":"Eskalon","en":"stairs","literal":"steps","pos":"n.","cat":"home"},{"fr":"Lampåra","en":"lamp / light","literal":"lamp","pos":"n.","cat":"home"},{"fr":"Espehon","en":"mirror","literal":"mirror","pos":"n.","cat":"home"},{"fr":"Katre","en":"bed","literal":"bed","pos":"n.","cat":"home"},{"fr":"Tokador","en":"dresser / vanity","literal":"dresser","pos":"n.","cat":"home"},{"fr":"Aparador","en":"cabinet / cupboard","literal":"cabinet","pos":"n.","cat":"home"},{"fr":"Lachi","en":"key","literal":"key","pos":"n.","cat":"home"},{"fr":"Setdå","en":"lock","literal":"lock","pos":"n.","cat":"home"},{"fr":"Frigorifikun","en":"refrigerator","literal":"refrigerator","pos":"n.","cat":"home"},{"fr":"Kalentadora","en":"stove / oven","literal":"heater / stove","pos":"n.","cat":"home"},{"fr":"Luftan","en":"trash / garbage","literal":"garbage","pos":"n.","cat":"home"},{"fr":"Balde","en":"bucket / pail","literal":"pail","pos":"n.","cat":"home"},{"fr":"Tuhong-hånom","en":"water tank / cistern","literal":"container of water","pos":"n.","cat":"home"},{"fr":"Åntena","en":"antenna / TV","literal":"antenna","pos":"n.","cat":"home"},{"fr":"Labutatorio","en":"laboratory / workshop","literal":"laboratory","pos":"n.","cat":"home"},{"fr":"Pateon","en":"backyard","literal":"back-area","pos":"n.","cat":"home"},{"fr":"Gårahe","en":"garage","literal":"garage","pos":"n.","cat":"home"},{"fr":"Åtbañil","en":"cement / concrete","literal":"masonry","pos":"n.","cat":"home"},{"fr":"Tapbla","en":"board / plank","literal":"plank","pos":"n.","cat":"home"},{"fr":"Kuetna","en":"curtain","literal":"curtain","pos":"n.","cat":"home"},{"fr":"Tapet","en":"carpet / rug","literal":"carpet","pos":"n.","cat":"home"},{"fr":"Seksion","en":"section / area","literal":"section","pos":"n.","cat":"home"},{"fr":"Nå'huyong","en":"outside","literal":"outside there","pos":"adv.","cat":"home"},{"fr":"Nå'i halom","en":"inside","literal":"inside there","pos":"adv.","cat":"home"},{"fr":"Langet","en":"sky / heaven","literal":"sky","pos":"n.","cat":"nature"},{"fr":"Atdao","en":"sun","literal":"sun","pos":"n.","cat":"nature"},{"fr":"Pulan","en":"moon","literal":"moon","pos":"n.","cat":"nature"},{"fr":"Pulan","en":"star","literal":"moon / star","pos":"n.","cat":"nature"},{"fr":"Estrellas","en":"stars","literal":"stars","pos":"n.","cat":"nature"},{"fr":"Uchan","en":"rain","literal":"rain","pos":"n.","cat":"nature"},{"fr":"Niyok","en":"coconut tree","literal":"coconut","pos":"n.","cat":"nature"},{"fr":"Månglo'","en":"wind / breeze","literal":"wind","pos":"n.","cat":"nature"},{"fr":"Pakyo","en":"typhoon / storm","literal":"storm","pos":"n.","cat":"nature"},{"fr":"Tåsi","en":"ocean / sea","literal":"sea","pos":"n.","cat":"nature"},{"fr":"Saddok","en":"river","literal":"river","pos":"n.","cat":"nature"},{"fr":"Lagu","en":"lake","literal":"lagoon / lake","pos":"n.","cat":"nature"},{"fr":"Montåña","en":"mountain","literal":"mountain","pos":"n.","cat":"nature"},{"fr":"Kottå","en":"cliff / rocky area","literal":"cliff","pos":"n.","cat":"nature"},{"fr":"Tano'","en":"ground / earth / land","literal":"earth","pos":"n.","cat":"nature"},{"fr":"Trongkon","en":"tree","literal":"tree-thing","pos":"n.","cat":"nature"},{"fr":"Flores","en":"flower","literal":"flowers","pos":"n.","cat":"nature"},{"fr":"Na'yan","en":"grass / plants","literal":"plants","pos":"n.","cat":"nature"},{"fr":"Åcho'","en":"rock / stone","literal":"stone","pos":"n.","cat":"nature"},{"fr":"Arean","en":"sand","literal":"sand","pos":"n.","cat":"nature"},{"fr":"Guafi","en":"fire","literal":"fire","pos":"n.","cat":"nature"},{"fr":"Hånom","en":"water","literal":"water","pos":"n.","cat":"nature"},{"fr":"Anemos","en":"wind (strong)","literal":"strong wind","pos":"n.","cat":"nature"},{"fr":"Månha trongkon","en":"forest / jungle trees","literal":"tree grove","pos":"n.","cat":"nature"},{"fr":"Ayuyu","en":"coconut crab","literal":"coconut crab","pos":"n.","cat":"nature"},{"fr":"Guihan","en":"fish","literal":"fish","pos":"n.","cat":"nature"},{"fr":"Guaka","en":"cow","literal":"cow","pos":"n.","cat":"nature"},{"fr":"Babui","en":"pig","literal":"pig","pos":"n.","cat":"nature"},{"fr":"Mannok","en":"chicken / bird","literal":"bird","pos":"n.","cat":"nature"},{"fr":"Ga'ga'","en":"animal / creature","literal":"creature","pos":"n.","cat":"nature"},{"fr":"Totot","en":"dove / pigeon","literal":"dove","pos":"n.","cat":"nature"},{"fr":"Pålu","en":"rooster","literal":"rooster","pos":"n.","cat":"nature"},{"fr":"Baba","en":"duck","literal":"duck","pos":"n.","cat":"nature"},{"fr":"Åhu","en":"dog","literal":"dog","pos":"n.","cat":"nature"},{"fr":"Katutu","en":"cat","literal":"cat","pos":"n.","cat":"nature"},{"fr":"Kabayu","en":"horse","literal":"horse","pos":"n.","cat":"nature"},{"fr":"Niyok-tronkon","en":"palm tree / coconut tree","literal":"coconut tree","pos":"n.","cat":"nature"},{"fr":"Mangga","en":"mango tree / mango","literal":"mango","pos":"n.","cat":"nature"},{"fr":"Bunwelu","en":"rainbow","literal":"rainbow","pos":"n.","cat":"nature"},{"fr":"Maipe-tåsi","en":"warm ocean","literal":"hot sea","pos":"n.","cat":"nature"},{"fr":"Cho'cho'","en":"work / job","literal":"labor / work","pos":"n.","cat":"work"},{"fr":"Emplea'du","en":"employee / worker","literal":"employed one","pos":"n.","cat":"work"},{"fr":"Patron","en":"boss / employer","literal":"master / boss","pos":"n.","cat":"work"},{"fr":"Sinahi","en":"salary / pay","literal":"earnings","pos":"n.","cat":"work"},{"fr":"Guma' cho'cho'","en":"office / workplace","literal":"house of work","pos":"n.","cat":"work"},{"fr":"Eskuela","en":"school","literal":"school","pos":"n.","cat":"work"},{"fr":"Mestro","en":"teacher (m)","literal":"master / teacher","pos":"n.","cat":"work"},{"fr":"Mestresa","en":"teacher (f)","literal":"mistress / teacher (f)","pos":"n.","cat":"work"},{"fr":"Doktot","en":"doctor","literal":"doctor","pos":"n.","cat":"work"},{"fr":"Nombri","en":"nurse","literal":"name / nurse","pos":"n.","cat":"work"},{"fr":"Åbogådu","en":"lawyer","literal":"lawyer","pos":"n.","cat":"work"},{"fr":"Inihineru","en":"engineer","literal":"engineer","pos":"n.","cat":"work"},{"fr":"Pulisman","en":"police officer","literal":"police man","pos":"n.","cat":"work"},{"fr":"Bomberu","en":"firefighter","literal":"pump man / firefighter","pos":"n.","cat":"work"},{"fr":"Sinangåne","en":"journalist / writer","literal":"writer of sayings","pos":"n.","cat":"work"},{"fr":"Atttista","en":"artist","literal":"artist","pos":"n.","cat":"work"},{"fr":"Musikeru","en":"musician","literal":"musician","pos":"n.","cat":"work"},{"fr":"Akton","en":"actor","literal":"actor","pos":"n.","cat":"work"},{"fr":"Famalåo'an","en":"farmer / cultivator","literal":"those who cultivate","pos":"n.","cat":"work"},{"fr":"Peskadot","en":"fisherman","literal":"fisherman","pos":"n.","cat":"work"},{"fr":"Estudiante","en":"student","literal":"student","pos":"n.","cat":"work"},{"fr":"Senget","en":"money","literal":"money","pos":"n.","cat":"work"},{"fr":"Banko","en":"bank","literal":"bank","pos":"n.","cat":"work"},{"fr":"Nengkanno","en":"food (as livelihood resource)","literal":"food","pos":"n.","cat":"work"},{"fr":"Prubecho","en":"benefit / profit","literal":"benefit","pos":"n.","cat":"work"},{"fr":"Retirådu","en":"retired person","literal":"retired","pos":"n.","cat":"work"},{"fr":"Tiempu libre","en":"free time / vacation","literal":"free time","pos":"n.","cat":"work"},{"fr":"Bisåyan","en":"colleague / coworker","literal":"fellow worker","pos":"n.","cat":"work"},{"fr":"Kontråtu","en":"contract","literal":"contract","pos":"n.","cat":"work"},{"fr":"Bileti","en":"bill / invoice","literal":"ticket / bill","pos":"n.","cat":"work"},{"fr":"Tenda","en":"store / shop","literal":"shop","pos":"n.","cat":"work"},{"fr":"Nimu","en":"project / task","literal":"task","pos":"n.","cat":"work"},{"fr":"Rapotte","en":"report","literal":"report","pos":"n.","cat":"work"},{"fr":"Kompania","en":"company / business","literal":"company","pos":"n.","cat":"work"},{"fr":"Gobietno","en":"government","literal":"government","pos":"n.","cat":"work"},{"fr":"Magof","en":"happy","literal":"happy","pos":"adj.","cat":"emotions"},{"fr":"Triste","en":"sad","literal":"sad","pos":"adj.","cat":"emotions"},{"fr":"Måiñao","en":"angry / upset","literal":"heated feeling","pos":"adj.","cat":"emotions"},{"fr":"Måsusuk","en":"surprised / shocked","literal":"surprised","pos":"adj.","cat":"emotions"},{"fr":"Maå'ñao","en":"scared / afraid","literal":"fearful","pos":"adj.","cat":"emotions"},{"fr":"Åñao","en":"fear / fright","literal":"fear","pos":"n.","cat":"emotions"},{"fr":"Åmot-niyok","en":"stress / worry","literal":"medicine worry","pos":"n.","cat":"emotions"},{"fr":"Gof mañotsot","en":"very regretful / very sorry","literal":"very regretful","pos":"adj.","cat":"emotions"},{"fr":"Konfotme","en":"satisfied / content","literal":"comfortable","pos":"adj.","cat":"emotions"},{"fr":"Sinsero","en":"sincere / genuine","literal":"sincere","pos":"adj.","cat":"emotions"},{"fr":"Guaiya","en":"love","literal":"love","pos":"n.","cat":"emotions"},{"fr":"Inásson","en":"hope","literal":"that which is hoped for","pos":"n.","cat":"emotions"},{"fr":"Minamagof","en":"happiness / joy","literal":"the state of happy","pos":"n.","cat":"emotions"},{"fr":"Triniste","en":"sadness","literal":"the state of sad","pos":"n.","cat":"emotions"},{"fr":"Minagahet","en":"truth / sincerity","literal":"the state of truth","pos":"n.","cat":"emotions"},{"fr":"Inaguaguat","en":"pride","literal":"state of prideful","pos":"n.","cat":"emotions"},{"fr":"Linalala'","en":"life / living","literal":"the state of alive","pos":"n.","cat":"emotions"},{"fr":"Isao","en":"sin / fault / guilt","literal":"wrongdoing","pos":"n.","cat":"emotions"},{"fr":"Manhoben","en":"youth / youthfulness","literal":"young ones","pos":"n.","cat":"emotions"},{"fr":"Minagof","en":"joy / delight","literal":"delight","pos":"n.","cat":"emotions"},{"fr":"Humålom","en":"to enter / feel something","literal":"to enter","pos":"v.","cat":"emotions"},{"fr":"Fa'maolek","en":"to be kind / to be good","literal":"to make oneself good","pos":"v.","cat":"emotions"},{"fr":"Mahalang","en":"longing / missing someone","literal":"yearning","pos":"adj.","cat":"emotions"},{"fr":"Ågang","en":"yearning / longing (deep)","literal":"calling out","pos":"n.","cat":"emotions"},{"fr":"Minaolek","en":"goodness / virtue","literal":"the state of good","pos":"n.","cat":"emotions"},{"fr":"Respetu","en":"respect","literal":"respect","pos":"n.","cat":"emotions"},{"fr":"Konfiyansa","en":"trust / confidence","literal":"confidence","pos":"n.","cat":"emotions"},{"fr":"Grasias","en":"gratitude / thanks","literal":"graces / thanks","pos":"n.","cat":"emotions"},{"fr":"Minalago'","en":"desire / wanting","literal":"the state of wanting","pos":"n.","cat":"emotions"},{"fr":"Ina'ayao","en":"jealousy","literal":"jealousy","pos":"n.","cat":"emotions"},{"fr":"Hinatsaihon","en":"loneliness","literal":"being alone-ness","pos":"n.","cat":"emotions"},{"fr":"Minagahet na guaiya","en":"true love","literal":"true love","pos":"n.","cat":"emotions"},{"fr":"Pasensia","en":"patience","literal":"patience","pos":"n.","cat":"emotions"},{"fr":"Ililok","en":"shame / embarrassment","literal":"shame","pos":"n.","cat":"emotions"},{"fr":"Minahalang","en":"nostalgia / longing","literal":"the state of longing","pos":"n.","cat":"emotions"},{"fr":"Håfa tatatmanu hao?","en":"How are you?","literal":"What how-is you?","pos":"phrase","cat":"phrases"},{"fr":"Maolek, si Yu'us ma'åse'.","en":"Fine, thank you.","literal":"Good, God's mercy.","pos":"phrase","cat":"phrases"},{"fr":"Ti bai hu tungo'.","en":"I don't know.","literal":"Not will I know.","pos":"phrase","cat":"phrases"},{"fr":"Håfa na'ån-mu?","en":"What is your name?","literal":"What name-your?","pos":"phrase","cat":"phrases"},{"fr":"I na'ån-hu si Jose.","en":"My name is Jose.","literal":"The name-my is Jose.","pos":"phrase","cat":"phrases"},{"fr":"Taimano?","en":"How? / In what way?","literal":"How so?","pos":"phrase","cat":"phrases"},{"fr":"Mångge hao sumåsaga?","en":"Where do you live?","literal":"Where you staying?","pos":"phrase","cat":"phrases"},{"fr":"Hågu guåhu.","en":"That's me. / Yes, me.","literal":"That me.","pos":"phrase","cat":"phrases"},{"fr":"Bai hu cho'gue.","en":"I will do it.","literal":"Will I do it.","pos":"phrase","cat":"phrases"},{"fr":"Ti siña yu'.","en":"I can't. / I'm unable.","literal":"Not able I.","pos":"phrase","cat":"phrases"},{"fr":"Siña yu'.","en":"I can. / I'm able.","literal":"Able I.","pos":"phrase","cat":"phrases"},{"fr":"Kao siña un ayuda yu'?","en":"Can you help me?","literal":"Can you help me?","pos":"phrase","cat":"phrases"},{"fr":"Hu malago' tumaitai.","en":"I want to read.","literal":"I want to-read.","pos":"phrase","cat":"phrases"},{"fr":"Hu malago' chumochocho.","en":"I want to eat.","literal":"I want to-eat.","pos":"phrase","cat":"phrases"},{"fr":"Malago' yu' gimen hånom.","en":"I want to drink water.","literal":"Want I drink water.","pos":"phrase","cat":"phrases"},{"fr":"Gef maipe på'go.","en":"It's very hot today.","literal":"Very hot now.","pos":"phrase","cat":"phrases"},{"fr":"Mångge i banyo?","en":"Where is the bathroom?","literal":"Where the bathroom?","pos":"phrase","cat":"phrases"},{"fr":"Håyi i na'ån-mu?","en":"What is your name? (alt)","literal":"Who the name-your?","pos":"phrase","cat":"phrases"},{"fr":"Ahe', ti hu komprende.","en":"No, I don't understand.","literal":"No, not I understand.","pos":"phrase","cat":"phrases"},{"fr":"Hunggan, hu komprende.","en":"Yes, I understand.","literal":"Yes, I understand.","pos":"phrase","cat":"phrases"},{"fr":"Hågu håyi?","en":"Who are you?","literal":"You who?","pos":"phrase","cat":"phrases"},{"fr":"Mångge Guåhan?","en":"Where is Guam?","literal":"Where Guam?","pos":"phrase","cat":"phrases"},{"fr":"Gof bunitu i tåsi.","en":"The ocean is very beautiful.","literal":"Very beautiful the sea.","pos":"phrase","cat":"phrases"},{"fr":"Malago' yu' fåhan guihan.","en":"I want to buy fish.","literal":"Want I buy fish.","pos":"phrase","cat":"phrases"},{"fr":"Kuånto este?","en":"How much is this?","literal":"How much this?","pos":"phrase","cat":"phrases"},{"fr":"Gof karun este.","en":"This is very expensive.","literal":"Very expensive this.","pos":"phrase","cat":"phrases"},{"fr":"Dikike' i presio-ña.","en":"The price is small / cheap.","literal":"Small the price-its.","pos":"phrase","cat":"phrases"},{"fr":"Kao guåha menu?","en":"Is there a menu?","literal":"Is there menu?","pos":"phrase","cat":"phrases"},{"fr":"Malago' yu' fina'tinas Chamoru.","en":"I want Chamorro food.","literal":"Want I Chamorro-made food.","pos":"phrase","cat":"phrases"},{"fr":"Månnge' este!","en":"This is delicious!","literal":"Delicious this!","pos":"phrase","cat":"phrases"},{"fr":"Si Yu'us ma'åse' gi todo.","en":"Thank you for everything.","literal":"God's mercy in all.","pos":"phrase","cat":"phrases"},{"fr":"Dispensa yu', mamåhlao yu'.","en":"Excuse me, I'm embarrassed.","literal":"Excuse me, ashamed I.","pos":"phrase","cat":"phrases"},{"fr":"Kao siña un sangan Chamoru?","en":"Can you speak Chamorro?","literal":"Can you speak Chamorro?","pos":"phrase","cat":"phrases"},{"fr":"Diddide' yu' kumuentos Chamoru.","en":"I speak a little Chamorro.","literal":"Little I speak Chamorro.","pos":"phrase","cat":"phrases"},{"fr":"Ti hu tungo' humuhungok.","en":"I don't understand what I'm hearing.","literal":"Not I know hearing.","pos":"phrase","cat":"phrases"},{"fr":"Faisen ta'lo, pot fabot.","en":"Please ask again.","literal":"Ask again, please.","pos":"phrase","cat":"phrases"},{"fr":"Sige, hanao.","en":"OK, go ahead.","literal":"Go on, go.","pos":"phrase","cat":"phrases"},{"fr":"Esta maolek.","en":"It's already fine / All good.","literal":"Already good.","pos":"phrase","cat":"phrases"},{"fr":"Bai hu fåtto agupa'.","en":"I will come tomorrow.","literal":"Will I arrive tomorrow.","pos":"phrase","cat":"phrases"},{"fr":"Guåha yu' gi gima'-hu.","en":"I am at my house.","literal":"There-is I at house-my.","pos":"phrase","cat":"phrases"},{"fr":"Kao guåha hånom?","en":"Is there water?","literal":"Is there water?","pos":"phrase","cat":"phrases"},{"fr":"Håfa i oran?","en":"What time is it?","literal":"What the hour?","pos":"phrase","cat":"phrases"},{"fr":"Alas dos på'go.","en":"It's two o'clock now.","literal":"At two now.","pos":"phrase","cat":"phrases"},{"fr":"Hanao ta.","en":"Let's go.","literal":"Go we.","pos":"phrase","cat":"phrases"},{"fr":"Fanhanao hit.","en":"Let's all go.","literal":"Go all us.","pos":"phrase","cat":"phrases"},{"fr":"Nå'i yu' un kuenta.","en":"Give me the bill.","literal":"Give me a bill.","pos":"phrase","cat":"phrases"},{"fr":"Hu guaiya hao.","en":"I love you.","literal":"I love you.","pos":"phrase","cat":"phrases"},{"fr":"Hu guaiya i familia-ku.","en":"I love my family.","literal":"I love the family-my.","pos":"phrase","cat":"phrases"},{"fr":"Båsta.","en":"Enough / Stop it.","literal":"Enough.","pos":"phrase","cat":"phrases"},{"fr":"Munga mañangu.","en":"Don't be noisy / Don't argue.","literal":"Don't be arguing.","pos":"phrase","cat":"phrases"},{"fr":"Agupa' kita.","en":"See you tomorrow.","literal":"Tomorrow us.","pos":"phrase","cat":"phrases"},{"fr":"Na' maolek hao.","en":"Take care of yourself.","literal":"Make good yourself.","pos":"phrase","cat":"phrases"},{"fr":"Kao maolek hao?","en":"Are you OK?","literal":"Is good you?","pos":"phrase","cat":"phrases"},{"fr":"Ahe', malangu yu'.","en":"No, I'm sick.","literal":"No, sick I.","pos":"phrase","cat":"phrases"},{"fr":"Sakkan na biåhe.","en":"Safe travels.","literal":"Safe journey.","pos":"phrase","cat":"phrases"},{"fr":"Kao guåha doktot?","en":"Is there a doctor?","literal":"Is there doctor?","pos":"phrase","cat":"phrases"},{"fr":"Nasakit i åtkos-hu.","en":"My back hurts.","literal":"Painful the back-my.","pos":"phrase","cat":"phrases"},{"fr":"Malago' yu' resibo.","en":"I want a receipt.","literal":"Want I receipt.","pos":"phrase","cat":"phrases"},{"fr":"Mångge i tenda?","en":"Where is the store?","literal":"Where the store?","pos":"phrase","cat":"phrases"},{"fr":"Håyi mangganna?","en":"Who won?","literal":"Who winning?","pos":"phrase","cat":"phrases"},{"fr":"Ti hu komprende este.","en":"I don't understand this.","literal":"Not I understand this.","pos":"phrase","cat":"phrases"},{"fr":"Ilek-ña håfa?","en":"What did he/she say?","literal":"Said-his/her what?","pos":"phrase","cat":"phrases"},{"fr":"Håfa ilek-mu?","en":"What did you say?","literal":"What said-your?","pos":"phrase","cat":"phrases"},{"fr":"Repara i sa' håfa.","en":"Notice the reason why.","literal":"Notice the because why.","pos":"phrase","cat":"phrases"},{"fr":"Guåha maolek nai.","en":"There are good times.","literal":"There is good time.","pos":"phrase","cat":"phrases"},{"fr":"Buente.","en":"Maybe / Perhaps.","literal":"Perhaps / Could be.","pos":"phrase","cat":"phrases"},{"fr":"Empetsao på'go.","en":"It started now / Already began.","literal":"Started now.","pos":"phrase","cat":"phrases"},{"fr":"Mamåhlao yu'.","en":"I'm embarrassed / I'm ashamed.","literal":"Ashamed I.","pos":"phrase","cat":"phrases"},{"fr":"Ai adai!","en":"Oh my! / Oh dear! (expression of surprise)","literal":"Oh oh / Oh goodness","pos":"phrase","cat":"phrases"},{"fr":"Ay nana!","en":"Oh mother! (expression of pain/surprise)","literal":"Oh mother!","pos":"phrase","cat":"phrases"},{"fr":"Gof dångkulu na Si Yu'us Ma'åse'.","en":"Many many thanks / Big thank you.","literal":"Very big God's mercy.","pos":"phrase","cat":"phrases"},{"fr":"Kao siña un repiti?","en":"Can you repeat that?","literal":"Can you repeat?","pos":"phrase","cat":"phrases"},{"fr":"Fan mamaolekña.","en":"Please be good / Please behave.","literal":"Please make-good-ones.","pos":"phrase","cat":"phrases"},{"fr":"Malago' yu' komprende.","en":"I want to understand.","literal":"Want I understand.","pos":"phrase","cat":"phrases"},{"fr":"Håfa i finene'na?","en":"What is the first? / What comes first?","literal":"What the first one?","pos":"phrase","cat":"phrases"},{"fr":"Ginen mångge hao?","en":"Where are you from?","literal":"From where you?","pos":"phrase","cat":"phrases"},{"fr":"Guåha siha taotao gi gima'.","en":"There are people in the house.","literal":"There are people at house.","pos":"phrase","cat":"phrases"},{"fr":"Manhånao i famagu'on.","en":"The children left.","literal":"Went the children.","pos":"phrase","cat":"phrases"},{"fr":"Kao maolek i nengkanno'?","en":"Is the food good?","literal":"Is good the food?","pos":"phrase","cat":"phrases"},{"fr":"Gof månnge' i fina'tinas-mu.","en":"Your cooking is delicious.","literal":"Very delicious the made-by-you.","pos":"phrase","cat":"phrases"},{"fr":"Kuånto tiempu?","en":"How long? / How much time?","literal":"How much time?","pos":"phrase","cat":"phrases"},{"fr":"Tåya' prubecha.","en":"It's useless / No good.","literal":"There is no benefit.","pos":"phrase","cat":"phrases"},{"fr":"Ti mañotsot yu'.","en":"I'm not sorry / No regrets.","literal":"Not regretful I.","pos":"phrase","cat":"phrases"},{"fr":"Biba Guåhan!","en":"Long live Guam!","literal":"Live Guam!","pos":"phrase","cat":"phrases"},{"fr":"Håfa lai?","en":"What's up, friend?","literal":"What friend?","pos":"phrase","cat":"phrases"},{"fr":"Manggågao yu'.","en":"I'm begging / pleading.","literal":"Begging I.","pos":"phrase","cat":"phrases"},{"fr":"Gof manman yu'.","en":"I'm very surprised.","literal":"Very surprised I.","pos":"phrase","cat":"phrases"},{"fr":"Tåya' problema.","en":"No problem.","literal":"There is no problem.","pos":"phrase","cat":"phrases"},{"fr":"Taimano para u cho'gue?","en":"How will it be done?","literal":"How will it do?","pos":"phrase","cat":"phrases"},{"fr":"Para u maolek.","en":"It will be fine.","literal":"Will be good.","pos":"phrase","cat":"phrases"},{"fr":"Hita na taotao Chamoru.","en":"We are Chamorro people.","literal":"We people Chamorro.","pos":"phrase","cat":"phrases"},{"fr":"Hu prutehi i lengguåhi-ta.","en":"I protect our language.","literal":"I protect the language-ours.","pos":"phrase","cat":"phrases"},{"fr":"Guåhan i tano'-ta.","en":"Guam is our land.","literal":"Guam the land-ours.","pos":"phrase","cat":"phrases"},{"fr":"Kao siña un na'i yu' hånom?","en":"Can you give me water?","literal":"Can you give me water?","pos":"phrase","cat":"phrases"},{"fr":"Un nå'i yu' håfa?","en":"What did you give me?","literal":"You give me what?","pos":"phrase","cat":"phrases"},{"fr":"Bai hu bisita hao.","en":"I will visit you.","literal":"Will I visit you.","pos":"phrase","cat":"phrases"},{"fr":"Kao guåha na momenta?","en":"Do you have a moment?","literal":"Is there a moment?","pos":"phrase","cat":"phrases"},{"fr":"Ihu-mu bunitu.","en":"Your nose is cute / beautiful.","literal":"Nose-your beautiful.","pos":"phrase","cat":"phrases"},{"fr":"Gåpu yu' gi langet.","en":"My spirit soars in the sky.","literal":"Fly I in sky.","pos":"phrase","cat":"phrases"},{"fr":"Taya' sinesiente-ku.","en":"I have no feelings about it.","literal":"There is no feeling-my.","pos":"phrase","cat":"phrases"},{"fr":"Duru dumangkulo i pachot-mu.","en":"You talk too much.","literal":"Hard grows the mouth-your.","pos":"phrase","cat":"phrases"},{"fr":"Annok na gof magof hao.","en":"It's obvious you're very happy.","literal":"Obvious that very happy you.","pos":"phrase","cat":"phrases"},{"fr":"Puti i kurason-hu.","en":"My heart hurts.","literal":"Hurts the heart-my.","pos":"phrase","cat":"phrases"},{"fr":"Na' fanmagof hao.","en":"Make yourself happy.","literal":"Make happy yourself.","pos":"phrase","cat":"phrases"},{"fr":"Kao siña un akompaña yu'?","en":"Can you accompany me?","literal":"Can you accompany me?","pos":"phrase","cat":"phrases"},{"fr":"Manmapos i tiempo.","en":"Time has passed.","literal":"Passed the time.","pos":"phrase","cat":"phrases"},{"fr":"Hågu mismo.","en":"You yourself / Exactly you.","literal":"You same.","pos":"phrase","cat":"phrases"},{"fr":"Bula i pino'lo-ña.","en":"He/she talks a lot.","literal":"Swims the talking-his/her.","pos":"phrase","cat":"phrases"},{"fr":"Håfa na ti maolek?","en":"Why isn't it good?","literal":"What that not good?","pos":"phrase","cat":"phrases"},{"fr":"Kalan bunitu i flores.","en":"The flower looks beautiful.","literal":"Appears beautiful the flower.","pos":"phrase","cat":"phrases"},{"fr":"Guåha dikike' na problema.","en":"There's a small problem.","literal":"There is small problem.","pos":"phrase","cat":"phrases"},{"fr":"Na' siguru hao.","en":"Make sure. / Be certain.","literal":"Make certain yourself.","pos":"phrase","cat":"phrases"},{"fr":"Sigi ha'.","en":"Just keep going / Never mind.","literal":"Go on just.","pos":"phrase","cat":"phrases"},{"fr":"Adahi hao.","en":"Be careful. / Watch out.","literal":"Be cautious yourself.","pos":"phrase","cat":"phrases"},{"fr":"Adahi i tåsi.","en":"Be careful of the ocean.","literal":"Be cautious the sea.","pos":"phrase","cat":"phrases"},{"fr":"Hu tetehnan hao.","en":"I miss you.","literal":"I miss you.","pos":"phrase","cat":"phrases"},{"fr":"Mahalang yu' para Guåhan.","en":"I'm homesick for Guam.","literal":"Longing I for Guam.","pos":"phrase","cat":"phrases"},{"fr":"Atan i atdao.","en":"Look at the sun.","literal":"Look the sun.","pos":"phrase","cat":"phrases"},{"fr":"Uchan på'go gi puenge.","en":"It's raining now at night.","literal":"Rain now at night.","pos":"phrase","cat":"phrases"},{"fr":"Pakyo para u måtto.","en":"A typhoon is coming.","literal":"Typhoon will come.","pos":"phrase","cat":"phrases"},{"fr":"Manmanman yu' nu este.","en":"I'm amazed at this.","literal":"Amazed I at this.","pos":"phrase","cat":"phrases"},{"fr":"Bai hu usa este.","en":"I will use this.","literal":"Will I use this.","pos":"phrase","cat":"phrases"},{"fr":"Ai lai, maolek!","en":"Oh wow, great!","literal":"Oh friend, good!","pos":"phrase","cat":"phrases"},{"fr":"Esta yu' guini.","en":"I'm already here.","literal":"Already I here.","pos":"phrase","cat":"phrases"},{"fr":"Ti hu li'e' hao nigap.","en":"I didn't see you yesterday.","literal":"Not I see you yesterday.","pos":"phrase","cat":"phrases"},{"fr":"Gof taimamahlao hao.","en":"You have no shame. / You're shameless.","literal":"Very without-shame you.","pos":"phrase","cat":"phrases"},{"fr":"Kao siña un cho'gue para yu'?","en":"Can you do it for me?","literal":"Can you do for me?","pos":"phrase","cat":"phrases"},{"fr":"Basta ya un hanao.","en":"Enough, just go.","literal":"Enough and you go.","pos":"phrase","cat":"phrases"},{"fr":"Mamaolek hit.","en":"We are well / We are good.","literal":"Good we.","pos":"phrase","cat":"phrases"},{"fr":"Siempre bai hu hånao.","en":"I will definitely go.","literal":"Always will I go.","pos":"phrase","cat":"phrases"},{"fr":"Ginen i tåsi i minamagof-ta.","en":"From the sea comes our joy.","literal":"From the sea the joy-ours.","pos":"phrase","cat":"phrases"},{"fr":"Håyi siha?","en":"Who are they?","literal":"Who they?","pos":"phrase","cat":"phrases"},{"fr":"Meggai na taotao.","en":"Many people.","literal":"Many people.","pos":"phrase","cat":"phrases"},{"fr":"Taya' taotao.","en":"There's nobody.","literal":"There is no person.","pos":"phrase","cat":"phrases"},{"fr":"Kao siña yu' kumuentos nu hågu?","en":"Can I speak with you?","literal":"Can I speak with you?","pos":"phrase","cat":"phrases"},{"fr":"Håfa inafamaolek-mu?","en":"What is your craft / profession?","literal":"What your making-good?","pos":"phrase","cat":"phrases"},{"fr":"Hu cho'gue gi minaolek.","en":"I do it with goodness.","literal":"I do it in goodness.","pos":"phrase","cat":"phrases"},{"fr":"Kao matungo' hao nu i Chamoru?","en":"Do you know Chamorro?","literal":"Is known you the Chamorro?","pos":"phrase","cat":"phrases"},{"fr":"Hu nå'i hao aregålu.","en":"I give you a gift.","literal":"I give you gift.","pos":"phrase","cat":"phrases"},{"fr":"Para håyi este?","en":"For whom is this?","literal":"For who this?","pos":"phrase","cat":"phrases"},{"fr":"Hågu mismo i responsable.","en":"You yourself are responsible.","literal":"You same the responsible.","pos":"phrase","cat":"phrases"},{"fr":"Ti ha na'funhayan.","en":"He/she didn't finish it.","literal":"Not he/she make-finish.","pos":"phrase","cat":"phrases"},{"fr":"Fiho na bai hu cho'gue.","en":"I will definitely do it.","literal":"Surely will I do it.","pos":"phrase","cat":"phrases"},{"fr":"Inagofli'e'.","en":"Nice to meet you / Pleased to meet.","literal":"Pleased to see.","pos":"phrase","cat":"phrases"},{"fr":"Kao hao manggågao?","en":"Are you asking / begging?","literal":"Are you asking?","pos":"phrase","cat":"phrases"},{"fr":"Siña ta cho'gue este.","en":"We can do this.","literal":"Can we do this.","pos":"phrase","cat":"phrases"},{"fr":"Hu cho'gue ya-ku.","en":"I did what I like.","literal":"I did liked-by-me.","pos":"phrase","cat":"phrases"},{"fr":"Taya' mas bunitu kinu hao.","en":"There's nothing more beautiful than you.","literal":"There is none more beautiful than you.","pos":"phrase","cat":"phrases"},{"fr":"Håfa bida-mu?","en":"What are you doing? / What's your deal?","literal":"What doing-yours?","pos":"phrase","cat":"phrases"},{"fr":"Hu na'setbe på'go.","en":"I'm using it now.","literal":"I make-serve now.","pos":"phrase","cat":"phrases"},{"fr":"Kalan maolek este para hågu.","en":"This seems good for you.","literal":"Appears good this for you.","pos":"phrase","cat":"phrases"},{"fr":"Sa' håfa?","en":"Why? / For what reason?","literal":"Because what?","pos":"phrase","cat":"phrases"},{"fr":"Sa' guåhu.","en":"Because it's me. / It's my fault.","literal":"Because me.","pos":"phrase","cat":"phrases"},{"fr":"Annok lokkue'.","en":"It's also obvious.","literal":"Obvious also.","pos":"phrase","cat":"phrases"},{"fr":"Ti hu hongge.","en":"I don't believe it.","literal":"Not I believe.","pos":"phrase","cat":"phrases"},{"fr":"Hu hongge hao.","en":"I believe you.","literal":"I believe you.","pos":"phrase","cat":"phrases"},{"fr":"Kao gaige i doktot?","en":"Is the doctor there?","literal":"Is located the doctor?","pos":"phrase","cat":"phrases"},{"fr":"Nå'i yu' unu, pot fabot.","en":"Give me one, please.","literal":"Give me one, please.","pos":"phrase","cat":"phrases"},{"fr":"Kuånto na biåhe?","en":"How many times?","literal":"How much of journey?","pos":"phrase","cat":"phrases"},{"fr":"Hu susedi este gi minagahet.","en":"This truly happened.","literal":"I happened this in truth.","pos":"phrase","cat":"phrases"},{"fr":"Kao gaige hao på'go?","en":"Are you there now?","literal":"Is located you now?","pos":"phrase","cat":"phrases"},{"fr":"Uniku hao para guåhu.","en":"You are unique to me.","literal":"Unique you for me.","pos":"phrase","cat":"phrases"},{"fr":"Todu i tiempo.","en":"All the time.","literal":"All the time.","pos":"phrase","cat":"phrases"},{"fr":"Gi as tåta-hu.","en":"At my father's place.","literal":"At to father-my.","pos":"phrase","cat":"phrases"},{"fr":"Para bai hu hanao agupa'.","en":"I plan to go tomorrow.","literal":"Will I go tomorrow.","pos":"phrase","cat":"phrases"},{"fr":"Kao guåha siña hao?","en":"Is there something you can do?","literal":"Is there able you?","pos":"phrase","cat":"phrases"},{"fr":"Hågu ha'.","en":"Just you. / Only you.","literal":"You just.","pos":"phrase","cat":"phrases"},{"fr":"Kao esta?","en":"Is it done? / Already?","literal":"Is already?","pos":"phrase","cat":"phrases"},{"fr":"Bai hu sangani hao.","en":"I will tell you.","literal":"Will I tell you.","pos":"phrase","cat":"phrases"},{"fr":"Hågu i unu-ku.","en":"You are my number one.","literal":"You the one-my.","pos":"phrase","cat":"phrases"},{"fr":"Na' pogge hao.","en":"Behave yourself.","literal":"Make calm yourself.","pos":"phrase","cat":"phrases"},{"fr":"Dångkolu na prubecho.","en":"Big benefit / Big deal.","literal":"Big benefit.","pos":"phrase","cat":"phrases"},{"fr":"Taimanu na ginen Guåhan?","en":"How did it come from Guam?","literal":"How is it from Guam?","pos":"phrase","cat":"phrases"},{"fr":"Gi tano' i Chamoru.","en":"On Chamorro land.","literal":"In land the Chamorro.","pos":"phrase","cat":"phrases"},{"fr":"Sina ta fanhanao.","en":"We can all go.","literal":"Can we all-go.","pos":"phrase","cat":"phrases"},{"fr":"Nå'huyong hao.","en":"Come outside. / Go outside.","literal":"Outside you.","pos":"phrase","cat":"phrases"},{"fr":"Håmyo todos.","en":"All of you.","literal":"You all.","pos":"phrase","cat":"phrases"},{"fr":"Hit siha.","en":"We (all of us).","literal":"We they.","pos":"phrase","cat":"phrases"},{"fr":"Hu tutuhon på'go.","en":"I'm starting now.","literal":"I begin now.","pos":"phrase","cat":"phrases"},{"fr":"Ya-hu Guåhan.","en":"I like Guam.","literal":"Liked-by-me Guam.","pos":"phrase","cat":"phrases"},{"fr":"Ya-hu kumuentos Chamoru.","en":"I like speaking Chamorro.","literal":"Liked-by-me speaking Chamorro.","pos":"phrase","cat":"phrases"},{"fr":"Esta ha kåba.","en":"He/she already finished.","literal":"Already he/she finished.","pos":"phrase","cat":"phrases"},{"fr":"Håfa na ti matto hao?","en":"Why didn't you come?","literal":"What that not come you?","pos":"phrase","cat":"phrases"},{"fr":"Ai, ti hu tungo'.","en":"Oh, I don't know.","literal":"Oh, not I know.","pos":"phrase","cat":"phrases"},{"fr":"Malago' yu' måtto gi gima'-mu.","en":"I want to come to your house.","literal":"Want I come to house-your.","pos":"phrase","cat":"phrases"},{"fr":"Hunggan, bai hu fåtto.","en":"Yes, I will come.","literal":"Yes, will I arrive.","pos":"phrase","cat":"phrases"},{"fr":"Ti bai hu maleffa hao.","en":"I will not forget you.","literal":"Not will I forget you.","pos":"phrase","cat":"phrases"},{"fr":"I lenguahi-ta maolek.","en":"Our language is good.","literal":"The language-ours good.","pos":"phrase","cat":"phrases"},{"fr":"Fanguinehon kita.","en":"Let's cooperate / work together.","literal":"Work-together we.","pos":"phrase","cat":"phrases"},{"fr":"Respeta i man åmko'.","en":"Respect the elders.","literal":"Respect the (those who are) old.","pos":"phrase","cat":"phrases"},{"fr":"Na' maolek i tano'-ta.","en":"Take care of our land.","literal":"Make good the land-ours.","pos":"phrase","cat":"phrases"},{"fr":"Inangokkon yu' nu hågu.","en":"I lean on you / I depend on you.","literal":"Leaned I on you.","pos":"phrase","cat":"phrases"},{"fr":"Hu siente i pachot-mu.","en":"I feel your words.","literal":"I feel the mouth-your.","pos":"phrase","cat":"phrases"},{"fr":"Maolek ha' todo.","en":"Everything is fine.","literal":"Good just all.","pos":"phrase","cat":"phrases"},{"fr":"Kao guåha na kulot ya-mu?","en":"Do you have a favorite color?","literal":"Is there a color liked-by-you?","pos":"phrase","cat":"phrases"},{"fr":"I tåsi maipe yan mafñot.","en":"The sea is warm and cool.","literal":"The sea hot and cool.","pos":"phrase","cat":"phrases"},{"fr":"Fanoghe gi me'nan yu'.","en":"Stand in front of me.","literal":"Stand in front-of me.","pos":"phrase","cat":"phrases"}];
+
+// ── Mastered card keys persist across category changes within a session ──
+// Key = fr+en string so cards are uniquely identified regardless of order
+function cardKey(c) { return c.fr + '||' + c.en; }
+
+function startStudy() {
+  if (selectedCats.size === 0) { alert('Select at least one category.'); return; }
+  const customCards = getCustomCards().map(c => ({...c, type: c.type||'vocab'}));
+  const allFiltered = [...ALL_CARDS, ...customCards]
+    .filter(c => selectedCats.has(c.cat))
+    .map(c => ({ ...c, type: c.cat === 'phrases' ? 'phrase' : 'vocab' }));
+  if (!allFiltered.length) { alert('No cards match the selected categories.'); return; }
+
+  // Remove already-mastered cards from this selection
+  const remaining = allFiltered.filter(c => !masteredKeys.has(cardKey(c)));
+
+  if (!remaining.length) {
+    alert('You have already mastered all the cards in the selected categories! Hit "Reset Mastered Cards" to start fresh.');
+    return;
+  }
+
+  // totalForSession = cards in this selection (remaining + already mastered in selection)
+  initDeck(remaining, allFiltered.length);
+}
+
+// ═══════════════════════════════════════
+// DECK
+// ═══════════════════════════════════════
+
+// Tracks which cards have been mastered this session (survives category changes)
+let masteredKeys = new Set();
+
+function initDeck(words, totalForSession) {
+  deck = shuffle([...words]);
+  // totalCards = total cards in scope (mastered + remaining), for progress bar
+  totalCards = totalForSession !== undefined ? totalForSession : words.length;
+  currentIndex = 0;
+  isFlipped = false;
+  // Count how many cards in this selection are already mastered (for the progress bar)
+  const alreadyMasteredInSelection = totalForSession !== undefined
+    ? (totalForSession - words.length)  // totalForSession - remaining = mastered in selection
+    : 0;
+  // Reset session scores but seed mastered from what's already done in this selection
+  const prevKept  = scores.kept;
+  const prevWrong = scores.wrong;
+  const prevBest  = scores.bestStreak;
+  scores = { mastered: alreadyMasteredInSelection, kept: prevKept, wrong: prevWrong, streak: 0, bestStreak: prevBest };
+
+  const catNames = [...selectedCats].map(id => CATEGORIES.find(c => c.id === id)?.label || id).join(', ');
+  document.getElementById('activeCatBadge').textContent =
+    selectedCats.size === CATEGORIES.length ? 'All categories' : catNames;
+
+  // Update study header
+  document.getElementById('studyAvatar').textContent = currentUser.emoji;
+  document.getElementById('studyAvatar').style.background = currentUser.solidBg ? currentUser.color : currentUser.color + '33';
+  document.getElementById('studyUserName').textContent = currentUser.name;
+
+  cardHistory = []; // clear back-history on new deck
+  // Count a session as soon as study begins (not just on completion)
+  userState[currentUser.id].totalSessions++;
+  userState[currentUser.id].lastPlayed = new Date().toLocaleDateString();
+  saveUserState();
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('study').style.display = 'block';
+  renderSessionLog();
+  showCard();
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// ═══════════════════════════════════════
+// SHOW CARD
+// ═══════════════════════════════════════
+function showCard() {
+  if (!deck.length) { showComplete(); return; }
+  const card = deck[currentIndex % deck.length];
+  const isPhrase = card.type === 'phrase';
+
+  const frontWord = mode === 'fr' ? card.fr : card.en;
+  const backWord  = mode === 'fr' ? card.en : card.fr;
+
+  document.getElementById('frontWord').textContent = frontWord;
+  document.getElementById('backWord').textContent  = backWord;
+  document.getElementById('frontLang').textContent = mode === 'fr' ? '🌺 Chamoru' : '🇺🇸 English';
+  document.getElementById('backLang').textContent  = mode === 'fr' ? '🇺🇸 English' : '🌺 Chamoru';
+  document.getElementById('frontPos').textContent  = isPhrase ? '' : (card.pos || '');
+
+  ['frontTypeTag','backTypeTag'].forEach(id => {
+    document.getElementById(id).style.display = isPhrase ? 'block' : 'none';
+  });
+
+  const litEl = document.getElementById('backLiteral');
+  if (card.literal) {
+    litEl.style.display = 'block';
+    litEl.innerHTML = '<strong>Literal:</strong> ' + escapeHTML(card.literal);
+  } else {
+    litEl.style.display = 'none';
+  }
+
+  document.getElementById('frontFace').classList.toggle('phrase-card', isPhrase);
+  document.getElementById('backFace').classList.toggle('phrase-card', isPhrase);
+  document.getElementById('frontAudio').style.display = mode === 'fr' ? 'flex' : 'none';
+  document.getElementById('backAudio').style.display  = mode === 'en' ? 'flex' : 'none';
+
+  isFlipped = false;
+  document.getElementById('cardInner').classList.remove('flipped');
+  document.getElementById('actions').classList.remove('visible');
+  // Track history for back button (cap at 50)
+  if (deck.length) {
+    const cur = deck[currentIndex % deck.length];
+    if (!cardHistory.length || cardHistory[cardHistory.length-1] !== cur) {
+      cardHistory.push(cur);
+      if (cardHistory.length > 50) cardHistory.shift();
+    }
+  }
+  updateStats();
+}
+
+function escapeHTML(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function flipCard() {
+  if (!isFlipped) {
+    isFlipped = true;
+    document.getElementById('cardInner').classList.add('flipped');
+    document.getElementById('actions').classList.add('visible');
+  } else {
+    // clicking again flips back to front — simple toggle, no timer
+    isFlipped = false;
+    document.getElementById('cardInner').classList.remove('flipped');
+  }
+}
+
+// ═══════════════════════════════════════
+// ANSWER
+// ═══════════════════════════════════════
+function handleAnswer(result) {
+  if (!isFlipped) { flipCard(); return; }
+
+  if (result === 'mastered') {
+    const masteredCard = deck[currentIndex % deck.length];
+    addToSessionLog(masteredCard, 'mastered');
+    const mk = cardKey(masteredCard);
+    masteredKeys.add(mk);
+    // Persist immediately to userState so it survives user switches
+    if (!userState[currentUser.id].masteredKeys.includes(mk)) {
+      userState[currentUser.id].masteredKeys.push(mk);
+    }
+    deck.splice(currentIndex % deck.length, 1);
+    scores.mastered++; scores.streak++;
+    scores.bestStreak = Math.max(scores.bestStreak, scores.streak);
+    if (currentUser) {
+      userState[currentUser.id].maxStreak = Math.max(userState[currentUser.id].maxStreak || 0, scores.streak);
+    }
+    if (!deck.length) { showComplete(); return; }
+    currentIndex = currentIndex % deck.length;
+  } else if (result === 'keep') {
+    addToSessionLog(deck[currentIndex % deck.length], 'kept');
+    scores.kept++; scores.streak++;
+    scores.bestStreak = Math.max(scores.bestStreak, scores.streak);
+    if (currentUser) {
+      userState[currentUser.id].globalKept = (userState[currentUser.id].globalKept || 0) + 1;
+      userState[currentUser.id].maxStreak = Math.max(userState[currentUser.id].maxStreak || 0, scores.streak);
+    }
+    currentIndex = (currentIndex + 1) % deck.length;
+  } else {
+    addToSessionLog(deck[currentIndex % deck.length], 'missed');
+    scores.wrong++; scores.streak = 0;
+    const inner = document.getElementById('cardInner');
+    inner.classList.add('shake');
+    setTimeout(() => inner.classList.remove('shake'), 400);
+    currentIndex = (currentIndex + 1) % deck.length;
+  }
+
+  updateScoreboard();
+  saveUserState();
+  setTimeout(showCard, result === 'wrong' ? 430 : 40);
+}
+
+function updateStats() {
+  var remaining = deck.length;
+  var masteredInSel = scores.mastered;
+  document.getElementById('remainingCount').textContent = remaining;
+  document.getElementById('masteredCount').textContent  = masteredInSel;
+  document.getElementById('selectionTotal').textContent = totalCards;
+  var pct = totalCards > 0 ? (masteredInSel / totalCards) * 100 : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  updateScoreboard();
+}
+
+function updateScoreboard() {
+  // Global counts from persistent userState
+  var globalMastered = currentUser ? (userState[currentUser.id].masteredKeys || []).length : 0;
+  var globalKept     = currentUser ? (userState[currentUser.id].globalKept || 0) : 0;
+  var maxStreak      = currentUser ? (userState[currentUser.id].maxStreak || 0) : 0;
+  document.getElementById('scMastered').textContent  = globalMastered;
+  document.getElementById('scKept').textContent      = globalKept;
+  document.getElementById('scStreak').textContent    = scores.streak;
+  document.getElementById('scMaxStreak').textContent = maxStreak;
+  // Global progress bar
+  var allCount = ALL_CARDS.length + getCustomCards().length;
+  document.getElementById('globalMasteredLabel').textContent = globalMastered;
+  document.getElementById('globalTotalLabel').textContent    = allCount;
+  document.getElementById('globalRemainingLabel').textContent = allCount - globalMastered;
+  var globalPct = allCount > 0 ? (globalMastered / allCount) * 100 : 0;
+  document.getElementById('globalProgressFill').style.width = globalPct + '%';
+}
+
+// ═══════════════════════════════════════
+// COMPLETE
+// ═══════════════════════════════════════
+function showComplete() {
+  // Save to user state
+  const st = userState[currentUser.id];
+  st.totalMastered += scores.mastered;
+  st.bestStreak = Math.max(st.bestStreak, scores.bestStreak);
+  saveUserState();
+
+  document.getElementById('study').style.display = 'none';
+  document.getElementById('complete').style.display = 'block';
+  document.getElementById('completeMsg').textContent =
+    `Håfa Adai, ${currentUser.name}! Best streak this session: ${scores.bestStreak} in a row.`;
+  document.getElementById('fMastered').textContent = scores.mastered;
+  document.getElementById('fKept').textContent     = scores.kept;
+  document.getElementById('fWrong').textContent    = scores.wrong;
+}
+
+function playAgain() {
+  scores = { mastered:0, kept:0, wrong:0, streak:0, bestStreak:0 };
+  document.getElementById('complete').style.display = 'none';
+  document.getElementById('setup').style.display = 'flex';
+}
+
+function resetMasteredCards() {
+  if (!currentUser) return;
+  if (!confirm('Reset all mastered cards for ' + currentUser.name + '? They will come back into the deck.')) return;
+  masteredKeys = new Set();
+  userState[currentUser.id].masteredKeys = [];
+  userState[currentUser.id].sessionLog   = [];
+  userState[currentUser.id].globalKept   = 0;
+  userState[currentUser.id].maxStreak    = 0;
+  scores = { mastered:0, kept:0, wrong:0, streak:0, bestStreak:0 };
+  saveUserState();
+  renderSessionLog();
+  // Show feedback
+  const btn = document.getElementById('resetMasteredBtn');
+  if (btn) { btn.textContent = '✓ Reset!'; setTimeout(() => btn.textContent = '🔄 Reset Mastered Cards', 1500); }
+}
+
+// ═══════════════════════════════════════
+// BACK / SKIP / SESSION LOG
+// ═══════════════════════════════════════
+function goBackCard() {
+  if (cardHistory.length < 2) return;
+  cardHistory.pop(); // remove current
+  const prev = cardHistory[cardHistory.length - 1];
+  // Show the previous card in review mode (no actions, just flip to see both sides)
+  const isPhrase = prev.type === 'phrase';
+  document.getElementById('frontWord').textContent = mode === 'fr' ? prev.fr : prev.en;
+  document.getElementById('backWord').textContent  = mode === 'fr' ? prev.en : prev.fr;
+  document.getElementById('frontLang').textContent = mode === 'fr' ? '🌺 Chamoru' : '🇺🇸 English';
+  document.getElementById('backLang').textContent  = mode === 'fr' ? '🇺🇸 English' : '🌺 Chamoru';
+  document.getElementById('frontPos').textContent  = isPhrase ? '' : (prev.pos || '');
+  ['frontTypeTag','backTypeTag'].forEach(id => {
+    document.getElementById(id).style.display = isPhrase ? 'block' : 'none';
+  });
+  const litEl = document.getElementById('backLiteral');
+  if (prev.literal) { litEl.style.display='block'; litEl.innerHTML='<strong>Literal:</strong> '+escapeHTML(prev.literal); }
+  else litEl.style.display='none';
+  document.getElementById('frontFace').classList.toggle('phrase-card', isPhrase);
+  document.getElementById('backFace').classList.toggle('phrase-card', isPhrase);
+  document.getElementById('frontAudio').style.display = mode==='fr'?'flex':'none';
+  document.getElementById('backAudio').style.display  = mode==='en'?'flex':'none';
+  // Show both sides, hide action buttons — review only
+  isFlipped = false;
+  const inner = document.getElementById('cardInner');
+  inner.classList.remove('flipped');
+  document.getElementById('actions').classList.remove('visible');
+  // Add a "review" banner
+  const existingBanner = document.getElementById('reviewBanner');
+  if (existingBanner) existingBanner.remove();
+  const banner = document.createElement('div');
+  banner.id = 'reviewBanner';
+  banner.style.cssText = 'text-align:center;font-size:.7rem;color:#a08060;letter-spacing:.06em;text-transform:uppercase;margin-bottom:-6px;margin-top:4px';
+  banner.textContent = '← Reviewing previous card — tap to flip, then press Next to return';
+  const scene = document.querySelector('.card-scene');
+  scene.parentNode.insertBefore(banner, scene);
+  // Add a "Next" button temporarily
+  const existingNext = document.getElementById('reviewNextBtn');
+  if (existingNext) existingNext.remove();
+  const nextBtn = document.createElement('button');
+  nextBtn.id = 'reviewNextBtn';
+  nextBtn.className = 'nav-btn';
+  nextBtn.style.cssText = 'width:100%;margin-bottom:6px;background:var(--ink);color:var(--cream);border-color:var(--ink)';
+  nextBtn.textContent = 'Return to current card →';
+  nextBtn.onclick = exitReview;
+  const navRow = document.querySelector('.nav-row');
+  navRow.parentNode.insertBefore(nextBtn, navRow);
+}
+
+function exitReview() {
+  const banner = document.getElementById('reviewBanner');
+  const nextBtn = document.getElementById('reviewNextBtn');
+  if (banner) banner.remove();
+  if (nextBtn) nextBtn.remove();
+  showCard();
+}
+
+function skipCard() {
+  if (!deck.length) return;
+  // Move current card to end of deck
+  const idx = currentIndex % deck.length;
+  const [card] = deck.splice(idx, 1);
+  deck.push(card);
+  currentIndex = idx % deck.length;
+  exitReview();
+}
+
+let logOpen = false;
+function toggleSessionLog() {
+  logOpen = !logOpen;
+  document.getElementById('logPanel').classList.toggle('open', logOpen);
+  document.getElementById('logArrow').textContent = logOpen ? '▲' : '▼';
+}
+
+function renderSessionLog() {
+  const log = getSessionLog();
+  const countEl = document.getElementById('logCount');
+  const rowsEl  = document.getElementById('logRows');
+  if (!countEl || !rowsEl) return;
+  countEl.textContent = '(' + log.length + ' answered)';
+  if (!log.length) {
+    rowsEl.innerHTML = '<div style="padding:14px;font-size:.78rem;color:#a08060;text-align:center">No cards answered yet this session.</div>';
+    return;
+  }
+  rowsEl.innerHTML = log.map(function(entry, i) {
+    var cls = entry.result === 'mastered' ? 'correct' : entry.result === 'missed' ? 'wrong' : '';
+    var badge = entry.result === 'mastered' ? '<span class="log-badge c">✓ Mastered</span>'
+              : entry.result === 'kept'     ? '<span class="log-badge c" style="background:rgba(212,168,50,.15);color:var(--gold)">↻ Kept In</span>'
+              : entry.result === 'missed'   ? '<span class="log-badge w">✗ Missed</span>'
+              :                              '<span class="log-badge s">→ Skipped</span>';
+    var literalHtml = entry.literal ? '<span style="font-style:italic;color:#8a7060">' + escapeHTML(entry.literal) + '</span>' : '<span style="color:rgba(26,18,8,.2)">—</span>';
+    // "Add back to deck" button for mastered cards
+    var addBackBtn = '';
+    if (entry.result === 'mastered') {
+      addBackBtn = '<button onclick="addBackToDeck(' + i + ')" style="display:block;margin-top:4px;padding:2px 8px;font-size:.6rem;border-radius:8px;border:1px solid rgba(90,122,94,.35);background:transparent;color:var(--sage);cursor:pointer;font-family:sans-serif">&#8629; Add back</button>';
+    }
+    var audioBtn = '<button data-fr="' + escapeHTML(entry.fr) + '" onclick="speakEl(this)" style="background:none;border:1px solid rgba(26,18,8,.15);border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:10px;padding:0;margin-left:4px;vertical-align:middle;flex-shrink:0" title="Pronounce">🔊</button>';
+    return '<div class="log-row ' + cls + '"><div style="display:flex;align-items:center;gap:4px">' + escapeHTML(entry.fr) + audioBtn + '</div><div>' + escapeHTML(entry.en) + '</div><div>' + literalHtml + '</div><div>' + badge + addBackBtn + '</div></div>';
+  }).join('');
+}
+
+function addBackToDeck(logIndex) {
+  var log = getSessionLog();
+  var entry = log[logIndex];
+  if (!entry || entry.result !== 'mastered') return;
+  // Find the card in ALL_CARDS or custom cards
+  var customCards = getCustomCards();
+  var allCards = ALL_CARDS.concat(customCards);
+  var card = allCards.find(function(c) { return c.fr === entry.fr && c.en === entry.en; });
+  if (!card) { card = { fr: entry.fr, en: entry.en, literal: entry.literal||'', pos: 'n.', cat: 'custom', type: 'vocab' }; }
+  card = Object.assign({}, card, { type: card.cat === 'phrases' ? 'phrase' : (card.type || 'vocab') });
+  // Remove from masteredKeys
+  var mk = cardKey(card);
+  masteredKeys.delete(mk);
+  var mklist = userState[currentUser.id].masteredKeys;
+  var idx = mklist.indexOf(mk);
+  if (idx > -1) mklist.splice(idx, 1);
+  // Add back to deck at a random position
+  var insertAt = Math.floor(Math.random() * (deck.length + 1));
+  deck.splice(insertAt, 0, card);
+  totalCards++; // expand total scope
+  // Increment Kept In counters
+  scores.kept++;
+  userState[currentUser.id].globalKept = (userState[currentUser.id].globalKept || 0) + 1;
+  // Update log entry result to 'kept'
+  log[logIndex].result = 'kept';
+  saveSessionLog(log);
+  saveUserState();
+  renderSessionLog();
+  updateStats();
+  updateScoreboard();
+}
+
+// ═══════════════════════════════════════
+// AUDIO
+// ═══════════════════════════════════════
+function speak(text, lang) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = lang; utt.rate = 0.82; utt.pitch = 1;
+  const voices = window.speechSynthesis.getVoices();
+  const native = voices.find(v => v.lang.startsWith(lang.split('-')[0]) && !v.name.includes('('));
+  if (native) utt.voice = native;
+  window.speechSynthesis.speak(utt);
+}
+
+function speakEl(el) {
+  var fr = el.getAttribute('data-fr');
+  if (fr) speak(fr, 'ch-GU');
+}
+
+function speakFront(e) {
+  e.stopPropagation();
+  if (!deck.length) return;
+  const c = deck[currentIndex % deck.length];
+  speak(mode === 'fr' ? c.fr : c.en, mode === 'fr' ? 'ch-GU' : 'en-US');
+}
+
+function speakBack(e) {
+  e.stopPropagation();
+  if (!deck.length) return;
+  const c = deck[currentIndex % deck.length];
+  speak(mode === 'en' ? c.fr : c.en, mode === 'en' ? 'ch-GU' : 'en-US');
+}
+
+function speakCurrent() {
+  if (!deck.length) return;
+  const c = deck[currentIndex % deck.length];
+  if (!isFlipped) speak(mode === 'fr' ? c.fr : c.en, mode === 'fr' ? 'ch-GU' : 'en-US');
+  else            speak(mode === 'fr' ? c.en : c.fr, mode === 'fr' ? 'en-US' : 'ch-GU');
+}
+
+// ═══════════════════════════════════════
+// KEYBOARD
+// ═══════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (document.getElementById('study').style.display === 'none') return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  switch(e.key) {
+    case ' ': case 'Enter': e.preventDefault(); flipCard(); break;
+    case '1': handleAnswer('mastered'); break;
+    case '2': handleAnswer('keep');     break;
+    case '3': handleAnswer('wrong');    break;
+    case 'p': case 'P': speakCurrent(); break;
+    case 'q': case 'Q': goToUserPicker(); break;
+    case 's': case 'S': skipCard(); break;
+  }
+});
+
+// ═══════════════════════════════════════
+// EXPORT / IMPORT PROGRESS
+// ═══════════════════════════════════════
+function exportProgress() {
+  const data = { version: 1, saved: new Date().toISOString(), userState };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'francais-progress.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importProgress(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const msg = document.getElementById('importMsg');
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.userState) throw new Error('Invalid file');
+      // Merge in saved stats for each known user
+      USERS.forEach(u => {
+        if (data.userState[u.id]) {
+          userState[u.id] = { ...userState[u.id], ...data.userState[u.id] };
+        }
+      });
+      saveUserState();
+      buildUserPicker();
+      msg.className = 'import-msg ok';
+      msg.textContent = '✓ Progress loaded successfully!';
+      msg.style.display = 'block';
+      setTimeout(() => msg.style.display = 'none', 3000);
+    } catch(err) {
+      msg.className = 'import-msg err';
+      msg.textContent = '✗ Could not read file — make sure it\'s a valid progress file.';
+      msg.style.display = 'block';
+      setTimeout(() => msg.style.display = 'none', 4000);
+    }
+    event.target.value = ''; // reset so same file can be re-imported
+  };
+  reader.readAsText(file);
+}
+
+// ═══════════════════════════════════════
+// WORD LIST
+// ═══════════════════════════════════════
+let wlActiveCat = 'all';
+
+function openWordList() {
+  ['userPicker','setup','study','complete','cardCreator'].forEach(id => document.getElementById(id).style.display='none');
+  document.getElementById('wordList').style.display = 'block';
+  buildWLCatFilter();
+  renderWordList();
+}
+
+function closeWordList() {
+  document.getElementById('wordList').style.display = 'none';
+  document.getElementById('userPicker').style.display = 'flex';
+  buildUserPicker();
+}
+
+function buildWLCatFilter() {
+  const container = document.getElementById('wlCatFilter');
+  container.innerHTML = '';
+  const all = document.createElement('button');
+  all.className = 'cat-chip selected'; all.textContent = '✦ All';
+  all.onclick = () => { wlActiveCat='all'; updateWLChips(container); renderWordList(); };
+  container.appendChild(all);
+  CATEGORIES.forEach(cat => {
+    const chip = document.createElement('button');
+    chip.className = 'cat-chip' + (cat.special?' phrases':'') + (wlActiveCat===cat.id?' selected':'');
+    chip.textContent = cat.label;
+    chip.onclick = () => { wlActiveCat=cat.id; updateWLChips(container); renderWordList(); };
+    container.appendChild(chip);
+  });
+}
+
+function updateWLChips(container) {
+  [...container.children].forEach((chip,i) => {
+    const id = i===0 ? 'all' : CATEGORIES[i-1].id;
+    chip.classList.toggle('selected', id===wlActiveCat);
+  });
+}
+
+function getCustomCards() {
+  try { return JSON.parse(localStorage.getItem('chamoru_custom_cards')||'[]'); } catch(e){return[];}
+}
+
+function renderWordList() {
+  const query = (document.getElementById('wlSearch').value||'').toLowerCase();
+  const customCards = getCustomCards().map(c=>({...c,custom:true}));
+  const allCards = [...ALL_CARDS,...customCards];
+  const filtered = allCards.filter(c => {
+    if (wlActiveCat!=='all' && c.cat!==wlActiveCat) return false;
+    if (query && !c.fr.toLowerCase().includes(query) && !c.en.toLowerCase().includes(query)) return false;
+    return true;
+  });
+  const table = document.getElementById('wlTable');
+  if (!filtered.length) { table.innerHTML='<p style="color:#a08060;font-size:.85rem;text-align:center;padding:20px">No cards found.</p>'; return; }
+  const catColors = {greetings:'#c4531a',numbers:'#3a6fa8',time:'#5a7a5e',colors:'#d4a832',food:'#c4531a',
+    family:'#5a7a5e',body:'#8a5060',verbs:'#3a6fa8',adjectives:'#7a6030',travel:'#3a7080',
+    home:'#6a5030',nature:'#4a7040',work:'#504080',emotions:'#7a3060',phrases:'#3a6fa8',custom:'#8a5060'};
+
+  let rows = '';
+  filtered.forEach(function(c, i) {
+    var bg = i%2===0 ? '' : 'background:rgba(26,18,8,.018)';
+    var border = 'border-bottom:1px solid rgba(26,18,8,.05)';
+    var literalText = c.literal
+      ? '<span style="font-size:.78rem;color:#8a7060;font-style:italic">' + escapeHTML(c.literal) + '</span>'
+      : '<span style="color:rgba(26,18,8,.2)">&#8212;</span>';
+    var catColor = catColors[c.cat] || '#8a7560';
+    var customBadge = c.custom ? ' &#9733;' : '';
+    var wlAudioBtn = '<button data-fr="' + escapeHTML(c.fr) + '" onclick="speakEl(this)" style="background:none;border:1px solid rgba(26,18,8,.15);border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:10px;padding:0;margin-left:5px;vertical-align:middle;flex-shrink:0" title="Pronounce">🔊</button>';
+    rows += '<div style="padding:9px 14px;font-size:.82rem;' + bg + ';' + border + ';display:flex;align-items:center;gap:4px">' + escapeHTML(c.fr) + customBadge + wlAudioBtn + '</div>';
+    rows += '<div style="padding:9px 14px;font-size:.82rem;' + bg + ';' + border + '">' + escapeHTML(c.en) + '</div>';
+    rows += '<div style="padding:9px 14px;font-size:.82rem;' + bg + ';' + border + '">' + literalText + '</div>';
+    rows += '<div style="padding:9px 14px;' + bg + ';' + border + '"><span style="font-size:.6rem;font-weight:600;padding:2px 7px;border-radius:10px;background:' + catColor + '18;color:' + catColor + '">' + c.cat + '</span></div>';
+  });
+
+  var header = '<div style="padding:9px 14px;font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#8a7560;border-bottom:1px solid rgba(26,18,8,.08);background:var(--cream)">';
+  table.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:0;border:1px solid rgba(26,18,8,.1);border-radius:14px;overflow:hidden;background:var(--card-bg)">'
+    + header + 'French</div>'
+    + header + 'English</div>'
+    + header + 'Literal</div>'
+    + header + 'Cat</div>'
+    + rows
+    + '</div>';
+}
+
+// ═══════════════════════════════════════
+// CUSTOM CARD CREATOR
+// ═══════════════════════════════════════
+let ccType = 'word';
+
+function openCardCreator() {
+  ['userPicker','setup','study','complete','wordList'].forEach(id => document.getElementById(id).style.display='none');
+  document.getElementById('cardCreator').style.display = 'block';
+  renderCustomCardsList();
+}
+
+function closeCardCreator() {
+  document.getElementById('cardCreator').style.display = 'none';
+  document.getElementById('userPicker').style.display = 'flex';
+  buildUserPicker();
+}
+
+function setCCType(type) {
+  ccType = type;
+  document.getElementById('ccTypeWord').classList.toggle('selected', type==='word');
+  document.getElementById('ccTypePhrase').classList.toggle('selected', type==='phrase');
+  document.getElementById('ccLiteralRow').style.display = type==='phrase' ? 'block' : 'none';
+}
+
+function saveCustomCard() {
+  const fr = document.getElementById('ccFr').value.trim();
+  const en = document.getElementById('ccEn').value.trim();
+  const literal = document.getElementById('ccLiteral').value.trim();
+  const msg = document.getElementById('ccMsg');
+  if (!fr || !en) {
+    msg.style.display='block'; msg.style.background='rgba(196,83,26,.1)'; msg.style.color='var(--rust)'; msg.style.border='1px solid rgba(196,83,26,.2)';
+    msg.textContent='Please fill in both French and English fields.'; return;
+  }
+  const card = { fr, en, pos: ccType==='phrase'?'phrase':'n.', cat:'custom', type:ccType };
+  if (ccType==='phrase' && literal) card.literal = literal;
+  const existing = getCustomCards();
+  existing.push(card);
+  try { localStorage.setItem('chamoru_custom_cards', JSON.stringify(existing)); } catch(e){}
+  // Clear inputs
+  ['ccFr','ccEn','ccLiteral'].forEach(id => document.getElementById(id).value='');
+  msg.style.display='block'; msg.style.background='rgba(90,122,94,.12)'; msg.style.color='var(--sage)'; msg.style.border='1px solid rgba(90,122,94,.25)';
+  msg.textContent='✓ Card added! It will appear in the deck when you play.';
+  setTimeout(()=>msg.style.display='none',3000);
+  renderCustomCardsList();
+}
+
+function deleteCustomCard(index) {
+  const existing = getCustomCards();
+  existing.splice(index,1);
+  try { localStorage.setItem('chamoru_custom_cards', JSON.stringify(existing)); } catch(e){}
+  renderCustomCardsList();
+}
+
+function renderCustomCardsList() {
+  const cards = getCustomCards();
+  const container = document.getElementById('customCardsList');
+  if (!cards.length) { container.innerHTML='<p style="font-size:.75rem;color:#a08060;text-align:center;margin-top:8px">No custom cards yet.</p>'; return; }
+  container.innerHTML = '<p style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8a7560;margin-bottom:8px">Your custom cards ('+cards.length+')</p>' +
+    cards.map((c,i) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--cream);border-radius:10px;margin-bottom:6px;font-size:.82rem">
+      <div><strong>${escapeHTML(c.fr)}</strong> → ${escapeHTML(c.en)}</div>
+      <button onclick="deleteCustomCard(${i})" style="background:none;border:none;cursor:pointer;color:#c4531a;font-size:1rem;padding:0 4px" title="Delete">✕</button>
+    </div>`).join('');
+}
+
+// Custom cards are now handled directly in startStudy above
+
+
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+buildUserPicker();
+window.speechSynthesis && window.speechSynthesis.getVoices();
+
+// Add 'custom' category to CATEGORIES so it's recognized
+CATEGORIES.push({ id:'custom', label:'⭐ Custom', type:'vocab' });
+</script>
+</body>
+</html>
